@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <title>Threat Intelligence Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+  
+<style>
+    :root {
+      --bg-dark: #0F172A;
+      --bg-light: #1E293B;
+      --border-color: #334155;
+      --text-primary: #E2E8F0;
+      --text-secondary: #94A3B8;
+      --accent-blue: #3B82F6;
+      --accent-blue-hover: #2563EB;
+      --danger-bg: rgba(239, 68, 68, 0.1);
+      --danger-border: #EF4444;
+      --danger-text: #F87171;
+      --success-text: #34D399;
+    }
+
+    body {
+      font-family: 'Calibri', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-primary);
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background: var(--bg-light);
+      color: #FFF;
+      padding: 20px 0;
+      text-align: center;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    header h2 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 500;
+      letter-spacing: 1px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 30px auto;
+      padding: 0 20px;
+      background: transparent;
+    }
+
+    .form-group {
+      display: flex;
+      gap: 0;
+      margin-bottom: 25px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-light);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    input {
+      flex: 1;
+      padding: 14px 16px;
+      border: none;
+      border-radius: 0 8px 8px 0;
+      font-size: 16px;
+      background: transparent;
+      color: var(--text-primary);
+      outline: none;
+      text-align: left;
+    }
+    input::placeholder {
+      color: var(--text-secondary);
+    }
+    input:focus {
+      box-shadow: 0 0 0 2px var(--accent-blue);
+      z-index: 2;
+    }
+
+    button {
+      padding: 14px 25px;
+      border: none;
+      border-radius: 8px 0 0 8px;
+      background: var(--accent-blue);
+      color: #FFF;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background-color 0.2s ease;
+    }
+    button:hover {
+      background: var(--accent-blue-hover);
+    }
+
+    .cards-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      gap: 20px;
+      justify-content: center;
+    }
+
+    .card {
+      margin-top: 0;
+      padding: 24px;
+      border-radius: 12px;
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .card h3 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      color: var(--accent-blue);
+      text-align: center;
+      font-weight: 500;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 15px;
+    }
+
+    .detections-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    .detections-table tr {
+      border-bottom: 1px solid var(--border-color);
+    }
+    .detections-table tr:last-child {
+      border-bottom: none;
+    }
+
+    .detections-table th, .detections-table td {
+      padding: 12px 4px;
+      vertical-align: middle; 
+    }
+    .detections-table th {
+      color: var(--text-secondary);
+      font-weight: 400;
+      text-align: left;
+      width: 40%;
+    }
+    .detections-table td {
+      color: var(--text-primary);
+      font-weight: 500;
+      text-align: right;
+      font-family: 'Calibri', monospace;
+      font-size: 15px;
+      word-break: break-all;
+    }
+
+    .err {
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 6px;
+      background: var(--danger-bg);
+      color: var(--danger-text);
+      border: 1px solid var(--danger-border);
+      white-space: pre-wrap;
+      font-family: 'Calibri', monospace;
+      font-size: 14px;
+    }
+    
+    .chart-card {
+        grid-column: 1 / -1;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 300px;
+      max-width: 300px;
+      margin: 20px auto 0;
+    }
+    
+    .result-card {
+        text-align: center;
+        font-weight: 500;
+        font-size: 18px;
+        color: var(--text-secondary);
+    }
+    
+    /* --- CSS FOR DETECTIONS --- */
+    .toggle-btn {
+      background-color: var(--accent-blue);
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Calibri', sans-serif;
+      font-size: 14px;
+      width: 100%;
+      margin-top: 15px;
+      transition: background-color 0.2s ease;
+    }
+    .toggle-btn:hover {
+      background-color: var(--accent-blue-hover);
+    }
+    
+    #vt-detections {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+    
+    #vt-detections .detections-table {
+      table-layout: fixed;
+      width: 100%;
+    }
+    
+    #vt-detections .detections-table th,
+    #vt-detections .detections-table td {
+        font-size: 13px;
+        padding: 8px;
+        overflow-wrap: break-word;
+        vertical-align: top;
+        text-align: left; /* Default align left */
+    }
+    
+    #vt-detections .detections-table thead th {
+        color: var(--text-secondary);
+        font-weight: 400;
+    }
+    #vt-detections .detections-table tbody th {
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+     #vt-detections .detections-table tbody td {
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .col-engine { width: 35%; }
+    .col-category { width: 25%; }
+    .col-detection { width: 40%; }
+    
+    /* --- CSS FOR IPDB REPORTS --- */
+    #ipdb-reports {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+    
+    #ipdb-reports .detections-table {
+      table-layout: fixed;
+      width: 100%;
+    }
+    
+    #ipdb-reports .detections-table th,
+    #ipdb-reports .detections-table td {
+        font-size: 13px;
+        padding: 8px;
+        overflow-wrap: break-word;
+        vertical-align: top;
+        text-align: left;
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+    
+    #ipdb-reports .detections-table thead th {
+        color: var(--text-secondary);
+        font-weight: 400;
+    }
+
+    .col-ipdb-date { width: 30%; }
+    .col-ipdb-cat { width: 30%; }
+    .col-ipdb-comment { width: 40%; }
+
+    /* --- CSS FOR SCORE CHART --- */
+    .score-chart-container {
+      position: relative;
+      width: 140px;
+      height: 140px;
+      margin: 0 auto 20px;
+    }
+    .score-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      line-height: 1;
+    }
+    .score-numerator {
+      display: block;
+      font-size: 36px;
+      font-weight: 500;
+      font-family: 'Calibri', monospace;
+    }
+    .score-denominator {
+      display: block;
+      font-size: 16px;
+      color: var(--text-secondary);
+    }
+    
+    /* --- CSS לכרטיס החדשות --- */
+    .news-card {
+        margin-bottom: 20px;
+    }
+    .news-card h3 {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    .news-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        max-height: 250px;
+        overflow-y: auto;
+    }
+    .news-item {
+        border-bottom: 1px solid var(--border-color);
+        padding: 12px 4px;
+    }
+    .news-item:last-child {
+        border-bottom: none;
+    }
+    .news-item a {
+        text-decoration: none;
+        color: var(--text-primary);
+        font-weight: 500;
+        transition: color 0.2s ease;
+    }
+    .news-item a:hover {
+        color: var(--accent-blue);
+    }
+    /* --- סוף ה-CSS --- */
+
+    footer {
+      text-align: center;
+      padding: 40px 20px 20px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h2><i data-feather="shield"></i> Threat Intelligence Lookup</h2>
+  </header>
+
+  <div class="container">
+    <form method="post" action="/lookup">
+      <div class="form-group">
+        <button type="submit"><i data-feather="search"></i> Lookup</button>
+        <input name="query" placeholder="Enter IP / Domain / Hash (MD5/SHA1/SHA26)" value="{{ query|default('', true) }}">
+      </div>
+    </form>
+    
+    {% if news %}
+    <div class="card news-card">
+      <h3><i data-feather="rss"></i> Latest Cyber News (from The Hacker News)</h3>
+      <ul class="news-list">
+        {% for item in news %}
+          <li class="news-item">
+            <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% if result %}
+      <div class="card result-card">
+        <b>{{ result }}</b>
+      </div>
+    {% endif %}
+
+    {% if vt or ipdb %}
+      <div class="cards-container">
+        {% if ipdb %} 
+<div class="card ipdb-card">
+            <h3>IPDB Summary</h3>
+            <table class="detections-table">
+              <tr><th>Abuse Score</th><td>{{ ipdb.abuseScore }}</td></tr>
+              <tr><th>Total Reports</th><td>{{ ipdb.totalReports }}</td></tr>
+              <tr>
+                <th>Country</th>
+                <td>
+                  {% if ipdb.flag_url %}
+                    <img src="{{ ipdb.flag_url }}" alt="{{ ipdb.country }} flag" style="width: 20px; height: auto; vertical-align: middle; margin-right: 8px;">
+                  {% endif %}
+                  {{ ipdb.country }}
+                </td>
+              </tr>
+              <tr><th>ISP</th><td>{{ ipdb.isp }}</td></tr>
+              <tr><th>Domain</th><td>{{ ipdb.domain }}</td></tr>
+            </table>
+            {% if ipdb.error %}
+              <div class="err">IPDB Error: {{ ipdb.error }}</div>
+            {% endif %}
+
+            {% if ipdb.reports %}
+              <button class="toggle-btn" onclick="toggleIpdbReports()">
+                Show/Hide {{ ipdb.reports|length }} Recent Reports
+              </button>
+              <div id="ipdb-reports" style="display: none;">
+                <table class="detections-table">
+                  <thead>
+                    <tr>
+                      <th class="col-ipdb-date">Reported</th>
+                      <th class="col-ipdb-cat">Categories</th>
+                      <th class="col-ipdb-comment">Comment</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for report in ipdb.reports %}
+                    <tr>
+                      <td class="col-ipdb-date">{{ report.reportedAt }}</td>
+                      <td class="col-ipdb-cat">{{ report.categories | join(', ') }}</td>
+                      <td class="col-ipdb-comment">{{ report.comment }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% endif %}
+            </div>
+        {% endif %}
+
+        {% if vt %}
+          <div class="card vt-card">
+            <h3>VIRUSTOTAL Summary</h3>
+            
+            <div class="score-chart-container">
+                <canvas id="vtScoreChart"></canvas>
+                <div class="score-text">
+                    {% set total_bad = (malicious|default(0) + suspicious|default(0)) %}
+                    {% set total_all = (malicious|default(0) + suspicious|default(0) + harmless|default(0) + undetected|default(0) + timeout|default(0)) %}
+                    <span class="score-numerator" style="color: {% if total_bad > 0 %}var(--danger-text){% else %}var(--success-text){% endif %};">
+                        {{ total_bad }}
+                    </span>
+                    <span class="score-denominator">/ {{ total_all }}</span>
+                </div>
+            </div>
+
+            <table class="detections-table">
+              <tr><th>Name</th><td>{{ vt.name }}</td></tr>
+              <tr><th>Malicious</th><td>{{ vt.malicious }}</td></tr>
+              <tr><th>Suspicious</th><td>{{ vt.suspicious }}</td></tr>
+              <tr>
+                <th>Community Score</th>
+                {% set score_color = '' %}
+                {% if vt.community_score > 0 %}
+                    {% set score_color = 'color: var(--success-text) !important;' %} {# Green #}
+                {% elif vt.community_score < 0 %}
+                    {% set score_color = 'color: var(--danger-text) !important;' %} {# Red #}
+                {% endif %}
+                <td style="{{ score_color }}">{{ vt.community_score }}</td>
+              </tr>
+            </table>
+            {% if vt.error %}
+              <div class="err">VT Error: {{ vt.error }}</div>
+            {% endif %}
+            
+            {% if vt.kind in ('file', 'ip_address', 'domain') and vt.detections %}
+              <button class="toggle-btn" onclick="toggleDetections()">
+                Show/Hide {{ vt.detections|length }} Engine Results
+              </button>
+              <div id="vt-detections" style="display: none;">
+                <table class="detections-table">
+                  <thead>
+                    <tr>
+                      <th class="col-engine">Engine</th>
+                      <th class="col-category">Category</th>
+                      <th class="col-detection">Detection</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for det in vt.detections %}
+                      {% set color_style = '' %}
+                      {% if det.result|lower == 'clean' or det.category == 'harmless' %}
+                          {% set color_style = 'color: var(--success-text) !important;' %} {# Green #}
+                      {% elif det.category == 'undetected' or det.category == 'type-unsupported' %}
+                          {% set color_style = 'color: var(--text-secondary) !important;' %} {# Gray #}
+                      {% else %}
+                          {% set color_style = 'color: var(--danger-text) !important;' %} {# Red for all others #}
+                      {% endif %}
+                    <tr>
+                      <th class="col-engine">{{ det.engine }}</th>
+                      <td class="col-category" style="{{ color_style }}">{{ det.category }}</td>
+                      <td class="col-detection" style="{{ color_style }}">{{ det.result|default('clean', true) }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% endif %}
+            </div>
+        {% endif %}
+        
+        <div class="card chart-card">
+            <h3>Scan Analysis</h3>
+            <div class="chart-container">
+                <canvas id="riskChart"></canvas>
+            </div>
+        </div>
+      </div>
+
+      <script>
+        (function(){
+          // Register the datalabels plugin globally
+          Chart.register(ChartDataLabels);
+
+          // --- PIE CHART (Updated) ---
+          const pieCtx = document.getElementById('riskChart').getContext('2d');
+          const pieData = {
+            labels: ['Malicious', 'Suspicious', 'Harmless', 'Undetected', 'Timeout'],
+            datasets: [{
+              data: [
+                {{ malicious|default(0, true) }},
+                {{ suspicious|default(0, true) }},
+                {{ harmless|default(0, true) }},
+                {{ undetected|default(0, true) }},
+                {{ timeout|default(0, true) }}
+              ],
+              backgroundColor: [
+                'rgba(239, 68, 68, 0.8)',  /* Malicious (Red) */
+                'rgba(245, 158, 11, 0.8)', /* Suspicious (Amber) */
+                'rgba(34, 197, 94, 0.8)', /* Harmless (Green) */
+                'rgba(148, 163, 184, 0.8)',/* Undetected (Gray) */
+                'rgba(100, 116, 139, 0.8)' /* Timeout (Darker Gray) */
+              ],
+              borderColor: 'rgba(30, 41, 59, 0.8)',
+              borderWidth: 2
+            }]
+          };
+          new Chart(pieCtx, { 
+            type: 'pie', 
+            data: pieData, 
+            options: { 
+              responsive:true, 
+              maintainAspectRatio:false,
+              plugins: {
+                legend: {
+                  labels: {
+                    color: 'white'
+                  }
+                },
+                datalabels: {
+                  color: '#FFF',
+                  font: {
+                    weight: 'bold',
+                    size: 14,
+                    family: 'Calibri'
+                  },
+                  formatter: (value, context) => {
+                    return value > 0 ? value : ''; // Only show labels for values > 0
+                  }
+                }
+              }
+            }
+          });
+
+          // --- DOUGHNUT CHART (Existing) ---
+          const total_bad = {{ malicious|default(0) + suspicious|default(0) }};
+          const total_all = {{ malicious|default(0) + suspicious|default(0) + harmless|default(0) + undetected|default(0) + timeout|default(0) }};
+          const total_good = total_all - total_bad.
+
+          const scoreCtx = document.getElementById('vtScoreChart').getContext('2d');
+          const scoreData = {
+            labels: ['Detections', 'Scanned'],
+            datasets: [{
+              data: [total_bad, total_good],
+              backgroundColor: [
+                total_bad > 0 ? 'var(--danger-text)' : 'var(--success-text)', // Red if bad, Green if 0
+                'rgba(51, 65, 85, 0.5)' // Dark gray background
+              ],
+              borderColor: 'transparent',
+              borderWidth: 0
+            }]
+          };
+          new Chart(scoreCtx, {
+            type: 'doughnut',
+            data: scoreData,
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              cutout: '80%',
+              plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false }
+              },
+              animation: {
+                animateScale: true
+              }
+            }
+          });
+        })();
+      </script>
+    {% endif %}
+  </div>
+
+  <footer><p>&copy; 2025 Threat Intelligence Dashboard</p></footer>
+
+  <script>
+    function toggleDetections() {
+      var el = document.getElementById('vt-detections');
+      if (el.style.display === 'none') {
+        el.style.display = 'block';
+      } else {
+        el.style.display = 'none';
+      }
+    }
+
+    function toggleIpdbReports() {
+      var el = document.getElementById('ipdb-reports');
+      if (el.style.display === 'none') {
+        el.style.display = 'block';
+      } else {
+        el.style.display = 'none';
+      }
+    }
+  </script>
+  <script>
+    feather.replace()
+  </script>
+</body>
+</html>
