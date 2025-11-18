@@ -2,7 +2,7 @@
 <html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8">
-  <title>Threat Intelligence Dashboard</title>
+  <title>verdicom.io</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
@@ -10,158 +10,584 @@
   
 <style>
     :root {
-      --bg-dark: #0F172A;
-      --bg-light: #1E293B;
-      --border-color: #334155;
-      --text-primary: #E2E8F0;
-      --text-secondary: #94A3B8;
+      --bg-dark: #060b16;
+      --bg-light: rgba(17, 25, 40, 0.9);
+      --border-color: rgba(94, 234, 212, 0.14);
+      --panel-border: rgba(148, 163, 184, 0.2);
+      --panel-bg: rgba(12, 18, 33, 0.72);
+      --panel-bg-solid: rgba(12, 18, 33, 0.92);
+      --text-primary: #E6F1FF;
+      --text-secondary: #9BAAC5;
       --accent-blue: #3B82F6;
+      --accent-teal: #14B8A6;
       --accent-blue-hover: #2563EB;
+      --accent-gradient: linear-gradient(135deg, #5EEAD4 0%, #0891B2 45%, #2563EB 100%);
       --danger-bg: rgba(239, 68, 68, 0.1);
       --danger-border: #EF4444;
       --danger-text: #F87171;
       --success-text: #34D399;
+      --glow-shadow: 0 24px 45px rgba(20, 184, 166, 0.18);
+      --shadow-soft: 0 20px 45px rgba(8, 112, 184, 0.18);
     }
 
     body {
-      font-family: 'Calibri', sans-serif;
-      background-color: var(--bg-dark);
+      font-family: 'Montserrat', 'Segoe UI', sans-serif;
+      background:
+        radial-gradient(1400px 800px at 10% -10%, rgba(20, 184, 166, 0.12), transparent 60%),
+        radial-gradient(1000px 700px at 90% 0%, rgba(37, 99, 235, 0.18), transparent 60%),
+        linear-gradient(180deg, #04070f 0%, #0A1120 45%, #050910 100%);
       color: var(--text-primary);
       margin: 0;
       padding: 0;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><g fill="none" stroke="rgba(94,234,212,0.04)" stroke-width="1"><path d="M0 80h160M80 0v160"/><circle cx="80" cy="80" r="26"/></g></svg>');
+      opacity: 0.8;
+      pointer-events: none;
+      mix-blend-mode: lighten;
     }
 
     header {
-      background: var(--bg-light);
+      /* HEADER BACKGROUND UPDATED to blend with page bg */
+      background: linear-gradient(180deg, #0D1620 0%, var(--bg-light) 100%);
       color: #FFF;
-      padding: 20px 0;
+      padding: 30px 20px;
       text-align: center;
       border-bottom: 1px solid var(--border-color);
+      position: relative;
+      overflow: hidden;
+      cursor: default;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
     }
 
-    header h2 {
-      margin: 0;
-      font-size: 24px;
-      font-weight: 500;
-      letter-spacing: 1px;
+    header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(circle at 20% 50%, rgba(20, 184, 166, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 80% 50%, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .header-content {
       display: flex;
       justify-content: center;
       align-items: center;
       gap: 10px;
+      position: relative;
+      z-index: 1;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
     }
 
-    .container {
-      max-width: 1000px;
-      margin: 30px auto;
-      padding: 0 20px;
-      background: transparent;
+    /* Brand logo + text */
+    .brand-logo {
+      height: 62px;
+      width: auto;
+      display: block;
+      filter: drop-shadow(0 14px 30px rgba(20, 184, 166, 0.5));
+      pointer-events: none;
+      user-select: none;
+      transition: transform 0.3s ease, filter 0.3s ease;
+      animation: logoFloat 6s ease-in-out infinite;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+      margin-right: -15px;
     }
 
-    .form-group {
-      display: flex;
-      gap: 0;
-      margin-bottom: 25px;
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-      background: var(--bg-light);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    .header-content:hover .brand-logo {
+      transform: translateY(-2px) scale(1.04);
+      filter: drop-shadow(0 20px 40px rgba(20, 184, 166, 0.6));
+    }
+
+    .brand-text {
+      display: inline-block;
+      margin: 0;
+      font-size: 39px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: lowercase;
+      background: linear-gradient(138deg, #a2fff3 0%, #5eead4 24%, #2ebfd0 52%, #1d90ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      position: relative;
+      padding-left: 2px;
+      filter: drop-shadow(0 14px 30px rgba(20, 184, 166, 0.45));
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      transition: filter 0.3s ease, transform 0.3s ease;
+    }
+
+    .brand-text::after {
+      content: '.io';
+      font-size: 25px;
+      letter-spacing: 2.2px;
+      margin-left: 8px;
+      background: linear-gradient(135deg, #dbe7ff 0%, #a9b8ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      opacity: 0.75;
+    }
+
+    .brand-text::before {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 0;
+      width: 140%;
+      height: 4px;
+      background: linear-gradient(90deg,
+        rgba(20, 184, 166, 0) 0%,
+        rgba(20, 184, 166, 0.55) 20%,
+        rgba(59, 130, 246, 0.6) 50%,
+        rgba(20, 184, 166, 0.55) 80%,
+        rgba(20, 184, 166, 0) 100%);
+      opacity: 0.7;
+      border-radius: 999px;
+      animation: shimmer 4s ease-in-out infinite;
+    }
+
+    @keyframes logoFloat {
+      0%, 100% {
+        transform: translateY(0px);
+      }
+      50% {
+        transform: translateY(-6px);
+      }
+    }
+
+    .header-content:hover .brand-text {
+      transform: translateY(-1px) scale(1.03);
+      filter: drop-shadow(0 14px 30px rgba(20, 184, 166, 0.55));
+    }
+
+    @keyframes shimmer {
+      0%, 100% {
+        opacity: 0.4;
+        transform: translateX(-50%) scaleX(0.8);
+      }
+      50% {
+        opacity: 0.8;
+        transform: translateX(50%) scaleX(1.2);
+      }
+    }
+
+    /* Responsive design for header */
+    @media (max-width: 768px) {
+      header {
+        padding: 20px 15px;
+      }
+      .brand-text {
+        font-size: 26px;
+        letter-spacing: 2px;
+      }
+      .brand-logo {
+        height: 44px;
+      }
+      .header-content {
+        gap: 12px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .brand-text {
+        font-size: 22px;
+        letter-spacing: 1.5px;
+      }
+      .brand-logo {
+        height: 38px;
+      }
+      .header-content {
+        gap: 10px;
+      }
+    }
+
+    .content-shell {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 48px 32px 96px;
+      display: grid;
+      gap: 32px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .neon-panel {
+      position: relative;
+      border-radius: 18px;
+      padding: 28px 32px;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: border 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
       overflow: hidden;
     }
 
-    input {
-      flex: 1;
-      padding: 14px 16px;
-      border: none;
-      border-radius: 0 8px 8px 0;
-      font-size: 16px;
-      background: transparent;
-      color: var(--text-primary);
-      outline: none;
-      text-align: left;
-    }
-    input::placeholder {
-      color: var(--text-secondary);
-    }
-    input:focus {
-      box-shadow: 0 0 0 2px var(--accent-blue);
-      z-index: 2;
+    .neon-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(94, 234, 212, 0.55), rgba(37, 99, 235, 0.4));
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask-composite: exclude;
+      opacity: 0.45;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
     }
 
-    button {
-      padding: 14px 25px;
-      border: none;
-      border-radius: 8px 0 0 8px;
-      background: var(--accent-blue);
-      color: #FFF;
+    .neon-panel:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 28px 60px rgba(8, 112, 184, 0.25);
+    }
+
+    .neon-panel:hover::before {
+      opacity: 0.8;
+    }
+
+    .hero-grid {
+      display: grid;
+      gap: 24px;
+    }
+
+    .search-suite {
+      display: grid;
+      gap: 18px;
+    }
+
+    .lookup-form {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      align-items: stretch;
+    }
+
+    .lookup-form .control {
+      flex: 1;
+      min-width: 240px;
+      position: relative;
+    }
+
+    .lookup-form input {
+      width: 100%;
+      padding: 16px 18px;
+      border-radius: 12px;
+      border: 1px solid rgba(94, 234, 212, 0.18);
+      background: rgba(14, 23, 42, 0.85);
+      color: var(--text-primary);
       font-size: 16px;
-      font-weight: 500;
+      transition: border 0.2s ease, box-shadow 0.2s ease;
+      outline: none;
+    }
+
+    .lookup-form input::placeholder {
+      color: rgba(148, 163, 184, 0.7);
+    }
+
+    .lookup-form input:focus {
+      border-color: rgba(94, 234, 212, 0.6);
+      box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+    }
+
+    .log-textarea {
+      width: 100%;
+      min-height: 170px;
+      background: rgba(14, 23, 42, 0.88);
+      border: 1px solid rgba(94, 234, 212, 0.18);
+      border-radius: 14px;
+      color: var(--text-primary);
+      font-size: 15px;
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      resize: vertical;
+      transition: border 0.2s ease, box-shadow 0.2s ease;
+      outline: none;
+    }
+
+    .log-textarea:focus {
+      border-color: rgba(94, 234, 212, 0.55);
+      box-shadow: 0 10px 30px rgba(8, 112, 184, 0.18);
+    }
+
+    .btn-primary {
+      padding: 16px 28px;
+      border-radius: 12px;
+      border: none;
+      background: var(--accent-gradient);
+      color: #0b1220;
+      font-weight: 600;
+      font-size: 16px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
       cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      box-shadow: 0 12px 30px rgba(37, 99, 235, 0.28);
+      letter-spacing: 0.5px;
+    }
+
+    .btn-primary::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+      transform: translateX(-100%);
+      transition: transform 0.5s ease;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 18px 40px rgba(37, 99, 235, 0.35);
+    }
+
+    .btn-primary:hover::after {
+      transform: translateX(100%);
+    }
+
+    .btn-secondary {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(94, 234, 212, 0.25);
+      color: var(--text-primary);
+      padding: 12px 18px;
+      border-radius: 10px;
+      font-size: 14px;
+      letter-spacing: 0.4px;
+      cursor: pointer;
+      transition: border 0.2s ease, background 0.2s ease, transform 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(20, 184, 166, 0.12);
+      border-color: rgba(94, 234, 212, 0.55);
+      transform: translateY(-2px);
+    }
+
+    .surface-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+    }
+
+    .metric-tiles {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+    }
+
+    .metric-card {
+      position: relative;
+      padding: 16px 20px;
+      border-radius: 14px;
+      background: rgba(12, 21, 37, 0.78);
+      border: 1px solid rgba(94, 234, 212, 0.18);
+      box-shadow: 0 10px 28px rgba(8, 112, 184, 0.18);
+      overflow: hidden;
+      transition: transform 0.3s ease, border-color 0.3s ease;
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      inset: -40%;
+      background: radial-gradient(circle, rgba(94, 234, 212, 0.18) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(94, 234, 212, 0.45);
+    }
+
+    .metric-card:hover::before {
+      opacity: 1;
+    }
+
+    .metric-card .label {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: rgba(148, 163, 184, 0.7);
+      margin-bottom: 8px;
+    }
+
+    .metric-card .value {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #e9faff;
+      text-shadow: 0 12px 24px rgba(20, 184, 166, 0.2);
+    }
+
+    .section-title {
       display: flex;
       align-items: center;
-      gap: 8px;
-      transition: background-color 0.2s ease;
+      gap: 12px;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
     }
-    button:hover {
-      background: var(--accent-blue-hover);
+
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(94,234,212,0.4) 0%, transparent 90%);
+      border-radius: 999px;
+    }
+
+    .section-subtitle {
+      font-size: 14px;
+      color: rgba(148, 163, 184, 0.78);
+      letter-spacing: 0.4px;
+      max-width: 620px;
+      line-height: 1.6;
+    }
+
+    .lookup-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .lookup-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 12px;
     }
 
     .cards-container {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 24px;
       justify-content: center;
     }
 
     .card {
       margin-top: 0;
       padding: 24px;
-      border-radius: 12px;
-      background: rgba(30, 41, 59, 0.7);
-      border: 1px solid var(--border-color);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      border-radius: 16px;
+      background: rgba(10, 18, 32, 0.85);
+      border: 1px solid rgba(94, 234, 212, 0.18);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: -40%;
+      right: -20%;
+      width: 60%;
+      height: 140%;
+      background: radial-gradient(circle, rgba(37, 99, 235, 0.18) 0%, transparent 70%);
+      opacity: 0.6;
+      pointer-events: none;
+      transform: rotate(25deg);
     }
 
     .card h3 {
       margin-top: 0;
       margin-bottom: 20px;
-      color: var(--accent-blue);
-      text-align: center;
-      font-weight: 500;
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 15px;
+      color: #9bd8ff;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      font-size: 16px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      box-shadow: 0 8px 20px rgba(59, 130, 246, 0.18);
     }
 
     .detections-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
+      margin-top: 14px;
     }
-    .detections-table tr {
-      border-bottom: 1px solid var(--border-color);
+
+    .detections-table thead th {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1.1px;
+      color: rgba(148, 163, 184, 0.75);
+      font-weight: 600;
+      padding: 10px 8px;
+      border-bottom: 1px solid rgba(94, 234, 212, 0.14);
     }
-    .detections-table tr:last-child {
+
+    .detections-table tbody tr {
+      border-bottom: 1px solid rgba(94, 234, 212, 0.1);
+      transition: background 0.2s ease;
+    }
+
+    .detections-table tbody tr:last-child {
       border-bottom: none;
     }
 
-    .detections-table th, .detections-table td {
-      padding: 12px 4px;
-      vertical-align: middle; 
+    .detections-table tbody tr:hover {
+      background: rgba(37, 99, 235, 0.1);
     }
+
+    .detections-table th,
+    .detections-table td {
+      padding: 12px 8px;
+      vertical-align: top;
+    }
+
     .detections-table th {
-      color: var(--text-secondary);
-      font-weight: 400;
+      color: rgba(148, 163, 184, 0.8);
+      font-weight: 500;
       text-align: left;
-      width: 40%;
+      width: 38%;
+      font-size: 14px;
     }
+
     .detections-table td {
       color: var(--text-primary);
       font-weight: 500;
-      text-align: right;
-      font-family: 'Calibri', monospace;
-      font-size: 15px;
-      word-break: break-all;
+      text-align: left;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 14px;
+      word-break: break-word;
     }
 
     .err {
@@ -178,38 +604,272 @@
     
     .chart-card {
         grid-column: 1 / -1;
+        overflow: hidden;
     }
 
-    .chart-container {
-      position: relative;
-      height: 300px;
-      max-width: 300px;
-      margin: 20px auto 0;
+    .chart-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 22px;
     }
-    
+
+    .chart-card-header h3 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: rgba(224, 241, 255, 0.92);
+    }
+
+    .critical-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 16px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, rgba(220, 53, 69, 0.22), rgba(220, 53, 69, 0.38));
+      color: rgba(255, 236, 239, 0.95);
+      border: 1px solid rgba(220, 53, 69, 0.45);
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      font-weight: 700;
+      box-shadow: 0 0 18px rgba(220, 53, 69, 0.15);
+      white-space: nowrap;
+    }
+
+    .risk-distribution {
+      display: grid;
+      grid-template-columns: minmax(260px, 360px) 1fr;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .risk-ring {
+      position: relative;
+      width: clamp(240px, 34vw, 320px);
+      aspect-ratio: 1 / 1;
+      margin: 0 auto;
+    }
+
+    .risk-ring svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+      overflow: visible;
+      filter: drop-shadow(0 0 22px rgba(55, 206, 179, 0.18));
+    }
+
+    .risk-ring circle.risk-track {
+      fill: none;
+      stroke: rgba(10, 25, 45, 0.68);
+      stroke-width: 22;
+    }
+
+    .risk-ring circle.risk-segment {
+      fill: none;
+      stroke-width: 22;
+      stroke-linecap: round;
+      stroke: var(--segment-color, #5fe0c5);
+      transition: stroke-dashoffset 0.45s ease, opacity 0.35s ease;
+      opacity: 0.96;
+    }
+
+    .risk-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .risk-center-label {
+      font-size: 14px;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: rgba(152, 180, 210, 0.88);
+    }
+
+    .risk-center-value {
+      font-size: clamp(32px, 4vw, 44px);
+      font-weight: 800;
+      color: rgba(94, 234, 212, 0.92);
+      letter-spacing: 1px;
+    }
+
+    .risk-center-caption {
+      font-size: 13px;
+      color: rgba(203, 220, 239, 0.7);
+      letter-spacing: 0.8px;
+    }
+
+    .risk-breakdown {
+      display: grid;
+      gap: 18px;
+      align-self: stretch;
+    }
+
+    .risk-item {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 14px;
+      background: rgba(10, 23, 41, 0.55);
+      border: 1px solid rgba(46, 139, 198, 0.18);
+      box-shadow: inset 0 0 0 1px rgba(12, 30, 52, 0.55);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .risk-item:hover {
+      transform: translateY(-3px);
+      border-color: rgba(94, 234, 212, 0.35);
+    }
+
+    .risk-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      margin-top: 4px;
+      background: var(--dot-color, rgba(94, 234, 212, 0.92));
+      box-shadow: 0 0 12px rgba(94, 234, 212, 0.4);
+    }
+
+    .risk-item-info {
+      display: grid;
+      gap: 6px;
+    }
+
+    .risk-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    .risk-item-label {
+      font-size: 15px;
+      font-weight: 650;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: rgba(214, 236, 255, 0.92);
+    }
+
+    .risk-item-count {
+      font-size: 18px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.92);
+    }
+
+    .risk-item-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .risk-item-percent {
+      font-size: 13px;
+      letter-spacing: 0.8px;
+      color: rgba(158, 186, 214, 0.82);
+    }
+
+    .risk-item-bar {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(15, 32, 54, 0.6);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .risk-item-bar-fill {
+      position: absolute;
+      inset: 0;
+      width: var(--bar-percent, 0%);
+      max-width: 100%;
+      background: linear-gradient(90deg, rgba(94, 234, 212, 0.9), rgba(37, 173, 235, 0.9));
+      background-color: var(--bar-color, rgba(94, 234, 212, 0.9));
+      border-radius: inherit;
+      transition: width 0.4s ease;
+    }
+
+    .risk-empty {
+      text-align: center;
+      padding: 40px 20px;
+      border-radius: 18px;
+      background: rgba(9, 20, 36, 0.8);
+      border: 1px dashed rgba(94, 234, 212, 0.25);
+      color: rgba(147, 176, 210, 0.85);
+      letter-spacing: 0.6px;
+      font-size: 14px;
+    }
+
+    @media (max-width: 1024px) {
+      .risk-distribution {
+        grid-template-columns: 1fr;
+        justify-items: center;
+      }
+
+      .risk-breakdown {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .chart-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .critical-badge {
+        font-size: 11px;
+        padding: 6px 12px;
+      }
+
+      .risk-ring {
+        width: clamp(220px, 60vw, 280px);
+      }
+    }
+
     .result-card {
         text-align: center;
         font-weight: 500;
-        font-size: 18px;
-        color: var(--text-secondary);
+        font-size: 16px;
+        color: #f8fafc;
+        background: rgba(37, 99, 235, 0.18);
+        border: 1px solid rgba(59,130,246,0.35);
+        border-radius: 12px;
+        padding: 16px;
+        letter-spacing: 0.8px;
     }
     
     /* --- CSS FOR DETECTIONS --- */
     .toggle-btn {
-      background-color: var(--accent-blue);
-      color: white;
-      border: none;
-      padding: 8px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-family: 'Calibri', sans-serif;
-      font-size: 14px;
       width: 100%;
-      margin-top: 15px;
-      transition: background-color 0.2s ease;
+      margin-top: 18px;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.6px;
+      background: rgba(15, 23, 42, 0.78);
+      border: 1px solid rgba(94, 234, 212, 0.25);
+      color: var(--text-primary);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.2s ease, border 0.2s ease, background 0.2s ease;
     }
+
     .toggle-btn:hover {
-      background-color: var(--accent-blue-hover);
+      transform: translateY(-2px);
+      border-color: rgba(94, 234, 212, 0.55);
+      background: rgba(20, 184, 166, 0.14);
     }
     
     #vt-detections {
@@ -314,24 +974,97 @@
     
     /* --- CSS לכרטיס החדשות --- */
     .news-card {
-        margin-bottom: 20px;
+        margin-bottom: 28px;
+        position: relative;
+        overflow: hidden;
     }
     .news-card h3 {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 14px;
+        border-radius: 999px;
+        background: rgba(37, 99, 235, 0.14);
+        border: 1px solid rgba(37, 99, 235, 0.35);
+        color: #97c1ff;
+        font-size: 14px;
+        text-transform: uppercase;
+    }
+    .panel-header {
         display: flex;
         align-items: center;
-        justify-content: center;
+        justify-content: space-between;
+        gap: 14px;
+    }
+    .news-toggle {
+        display: inline-flex;
+        align-items: center;
         gap: 8px;
+        padding: 8px 12px;
+        font-size: 12px;
+        letter-spacing: 1px;
+        background: rgba(10, 18, 32, 0.8);
+        border: 1px solid rgba(94, 234, 212, 0.28);
+        border-radius: 999px;
+        cursor: pointer;
+        transition: transform 0.2s ease, border 0.2s ease, background 0.2s ease;
+    }
+    .news-toggle:hover {
+        transform: translateY(-1px);
+        border-color: rgba(94, 234, 212, 0.6);
+        background: rgba(20, 184, 166, 0.18);
+    }
+    .news-toggle .icon {
+        width: 14px;
+        height: 14px;
+        display: inline-flex;
     }
     .news-list {
         list-style: none;
         padding: 0;
         margin: 0;
-        max-height: 250px;
+        max-height: 260px;
         overflow-y: auto;
     }
+    .news-list::-webkit-scrollbar,
+    #vt-detections::-webkit-scrollbar,
+    #ipdb-reports::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    .news-list::-webkit-scrollbar-track,
+    #vt-detections::-webkit-scrollbar-track,
+    #ipdb-reports::-webkit-scrollbar-track {
+        background: rgba(10, 18, 32, 0.5);
+        border-radius: 999px;
+    }
+    .news-list::-webkit-scrollbar-thumb,
+    #vt-detections::-webkit-scrollbar-thumb,
+    #ipdb-reports::-webkit-scrollbar-thumb {
+        background: rgba(94, 234, 212, 0.35);
+        border-radius: 999px;
+    }
+    .news-list::-webkit-scrollbar-thumb:hover,
+    #vt-detections::-webkit-scrollbar-thumb:hover,
+    #ipdb-reports::-webkit-scrollbar-thumb:hover {
+        background: rgba(94, 234, 212, 0.55);
+    }
+    .news-body {
+        margin-top: 16px;
+        overflow: hidden;
+        max-height: 280px;
+        transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+    }
+    .news-body.collapsed {
+        max-height: 0;
+        opacity: 0;
+        padding-top: 0;
+        pointer-events: none;
+    }
     .news-item {
-        border-bottom: 1px solid var(--border-color);
-        padding: 12px 4px;
+        border-bottom: 1px solid rgba(94, 234, 212, 0.12);
+        padding: 12px 6px;
+        transition: background 0.2s ease;
     }
     .news-item:last-child {
         border-bottom: none;
@@ -340,12 +1073,178 @@
         text-decoration: none;
         color: var(--text-primary);
         font-weight: 500;
-        transition: color 0.2s ease;
+        transition: color 0.2s ease, letter-spacing 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
     .news-item a:hover {
-        color: var(--accent-blue);
+        color: #7ecdfc;
+        letter-spacing: 0.3px;
     }
     /* --- סוף ה-CSS --- */
+    
+    /* --- CSS משופר לאנימציה (מבוסס על הצעתך) --- */
+    .animation-container {
+      display: flex;
+      align-items: center;
+      gap: 30px;
+      margin-top: 25px;
+      margin-bottom: 20px;
+    }
+
+    .computer-icon {
+      width: 90px;
+      height: 90px;
+      color: var(--text-primary);
+      background-color: var(--bg-light);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      font-size: 13px;
+      text-align: center;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+      z-index: 10;
+      position: relative;
+      padding: 5px;
+    }
+    .computer-icon .ip-label {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 5px;
+        word-break: break-all;
+    }
+
+    .animation-line {
+      flex: 1;                 /* לוקח את כל המקום הפנוי בין האייקונים */
+      height: 2px;
+      background-color: var(--border-color);
+      position: relative;      /* כדי שהנקודה תהיה בתוכו */
+      z-index: 5;
+    }
+
+    .animation-dot {
+      width: 12px;
+      height: 12px;
+      background-color: var(--accent-blue);
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 0%;
+      transform: translateY(-50%); /* ממורכז אנכית */
+      animation: transfer-data 2s infinite linear;
+      box-shadow: 0 0 8px var(--accent-blue);
+      z-index: 15; /* מעל הקו */
+    }
+
+    @keyframes transfer-data {
+      0% {
+        left: 0%;
+        background-color: var(--accent-blue);
+        box-shadow: 0 0 8px var(--accent-blue);
+      }
+      100% {
+        left: 100%;
+        background-color: var(--danger-text);
+        box-shadow: 0 0 12px var(--danger-text);
+      }
+    }
+    /* --- סוף CSS לאנימציה --- */
+
+    /* --- CSS for Log Analysis Cards --- */
+    .log-card {
+      background: rgba(10, 18, 32, 0.82);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 14px;
+      padding: 18px 20px;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 18px 45px rgba(8, 112, 184, 0.22);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .log-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(14, 165, 233, 0.05));
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .risk-banner {
+      box-shadow: 0 24px 48px rgba(8, 112, 184, 0.25);
+      border-radius: 14px;
+      padding: 18px 20px;
+      display: grid;
+      gap: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(10, 18, 32, 0.9);
+      transition: transform 0.3s ease, border 0.3s ease;
+    }
+
+    .risk-banner.low {
+      border-color: rgba(45, 212, 191, 0.45);
+      background: linear-gradient(135deg, rgba(45, 212, 191, 0.18), rgba(10, 18, 32, 0.9));
+    }
+
+    .risk-banner.medium {
+      border-color: rgba(59, 130, 246, 0.35);
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(10, 18, 32, 0.9));
+    }
+
+    .risk-banner.high {
+      border-color: rgba(239, 68, 68, 0.45);
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(10, 18, 32, 0.9));
+    }
+
+    .risk-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .risk-tag {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      letter-spacing: 0.6px;
+      background: rgba(12, 23, 42, 0.65);
+      border: 1px solid rgba(94, 234, 212, 0.3);
+    }
+
+    .log-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 16px;
+    }
+    /* --- End Log Analysis CSS --- */
 
     footer {
       text-align: center;
@@ -353,89 +1252,456 @@
       color: var(--text-secondary);
       font-size: 14px;
     }
-  </style>
+</style>
 </head>
 <body>
   <header>
-    <h2><i data-feather="shield"></i> Threat Intelligence Lookup</h2>
+    <div class="header-content">
+      <img src="{{ url_for('static', filename='V.png') }}" alt="Verdicom Logo" class="brand-logo">
+      <h2 class="brand-text">erdicom</h2>
+    </div>
   </header>
 
-  <div class="container">
-    <form method="post" action="/lookup">
-      <div class="form-group">
-        <button type="submit"><i data-feather="search"></i> Lookup</button>
-        <input name="query" placeholder="Enter IP / Domain / Hash (MD5/SHA1/SHA26)" value="{{ query|default('', true) }}">
+  <main class="content-shell">
+    <section class="neon-panel search-suite">
+      <div class="lookup-meta">
+        <div class="section-title">
+          <i data-feather="crosshair"></i> Threat Lookup Console
+        </div>
+        <p class="section-subtitle">
+          Investigate indicators across global intelligence feeds. Paste an IP, domain, or hash to assemble a real-time threat dossier.
+        </p>
       </div>
-    </form>
-    
-    {% if news %}
-    <div class="card news-card">
-      <h3><i data-feather="rss"></i> Latest Cyber News (from The Hacker News)</h3>
-      <ul class="news-list">
-        {% for item in news %}
-          <li class="news-item">
-            <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
-          </li>
-        {% endfor %}
-      </ul>
-    </div>
-    {% endif %}
-    {% if result %}
-      <div class="card result-card">
-        <b>{{ result }}</b>
+      <form method="post" action="/lookup" class="lookup-form">
+        <div class="control">
+          <input name="query" placeholder="Enter IP / Domain / Hash (MD5 / SHA1 / SHA256)" value="{{ query|default('', true) }}">
+        </div>
+        <button type="submit" class="btn-primary">
+          <i data-feather="search"></i> Run Lookup
+        </button>
+      </form>
+
+      <div class="metric-tiles">
+        <div class="metric-card">
+          <span class="label">Malicious Hits</span>
+          <span class="value">{{ malicious|default(0, true) }}</span>
+        </div>
+        <div class="metric-card">
+          <span class="label">Suspicious Signals</span>
+          <span class="value">{{ suspicious|default(0, true) }}</span>
+        </div>
+        <div class="metric-card">
+          <span class="label">Harmless Verdicts</span>
+          <span class="value">{{ harmless|default(0, true) }}</span>
+        </div>
+        <div class="metric-card">
+          <span class="label">News Signals</span>
+          <span class="value">{{ news|length if news else 0 }}</span>
+        </div>
       </div>
+
+      <div class="lookup-actions">
+        <button type="button" class="btn-secondary toggle-btn" onclick="toggleLogAnalyzer()">
+          <i data-feather="file-text"></i> Open Advanced Log Analyzer
+        </button>
+      </div>
+    </section>
+
+    <section id="log-analyzer-section" class="neon-panel" style="display: {% if log_analysis_results %}block{% else %}none{% endif %};">
+      <div class="section-title">
+        <i data-feather="cpu"></i> SIEM Log Intelligence
+      </div>
+      <p class="section-subtitle">
+        Drop raw SIEM entries to automatically extract entities, tag risk indicators, and pivot into enriched intelligence feeds.
+      </p>
+      
+      <form method="post" action="/analyze_log" class="log-form">
+        <textarea class="log-textarea" name="log_text" placeholder="Paste your SIEM log entry here (JSON, Syslog, Windows Event Log, key/value pairs, etc.)">{% if log_analysis_results and log_analysis_results.text %}{{ log_analysis_results.text }}{% endif %}</textarea>
+        <div class="log-actions">
+          <button type="submit" class="btn-primary">
+            <i data-feather="play-circle"></i> Analyze Log
+          </button>
+        </div>
+      </form>
+
+      {% if log_analysis_results %}
+        {% set risk_level = log_analysis_results.risk_level | default('low') %}
+        {% set risk_icon = 'check-circle' if risk_level == 'low' else 'alert-circle' if risk_level == 'medium' else 'alert-triangle' %}
+        
+        <div class="risk-banner {{ risk_level }}">
+          <div class="lookup-meta" style="gap:16px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <i data-feather="{{ risk_icon }}" style="width: 24px; height: 24px;"></i>
+              <strong style="font-size: 18px; letter-spacing:1px;">Risk Level: {{ risk_level.upper() }}</strong>
+            </div>
+            {% if log_analysis_results.activity_summary %}
+              <span style="color: rgba(148,163,184,0.8); font-size:14px;">{{ log_analysis_results.activity_summary }}</span>
+            {% endif %}
+          </div>
+          {% if log_analysis_results.risk_indicators %}
+            <div class="risk-tags">
+              {% for indicator in log_analysis_results.risk_indicators %}
+                <span class="risk-tag">{{ indicator }}</span>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+
+        {# Activity Summary Cards #}
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-bottom: 20px;">
+          
+          {# Network Flow Animation #}
+          {% if log_analysis_results.src_ip or log_analysis_results.dst_ip %}
+            <div class="log-card" style="animation: fadeInUp 0.6s ease-out 0.1s both;">
+              <h4 style="margin-top: 0; margin-bottom: 12px; color: var(--text-primary); font-size: 16px; display: flex; align-items: center; gap: 8px;">
+                <i data-feather="activity"></i> Network Flow
+              </h4>
+              <div class="animation-container" style="margin: 15px 0;">
+                <div class="computer-icon">
+                  <i data-feather="server" style="width: 24px; height: 24px;"></i>
+                  <strong style="font-size: 12px;">Source</strong>
+                  <span class="ip-label" style="font-size: 11px;">{{ log_analysis_results.src_ip | default('Unknown', true) }}</span>
+                </div>
+                <div class="animation-line">
+                  <div class="animation-dot"></div>
+                </div>
+                <div class="computer-icon">
+                  <i data-feather="database" style="width: 24px; height: 24px;"></i>
+                  <strong style="font-size: 12px;">Destination</strong>
+                  <span class="ip-label" style="font-size: 11px;">{{ log_analysis_results.dst_ip | default('Unknown', true) }}</span>
+                </div>
+              </div>
+              {% if log_analysis_results.protocol or log_analysis_results.dst_port %}
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-color); display: flex; gap: 15px; font-size: 13px;">
+                  {% if log_analysis_results.protocol %}
+                    <span><strong>Protocol:</strong> {{ log_analysis_results.protocol }}</span>
+                  {% endif %}
+                  {% if log_analysis_results.dst_port %}
+                    <span><strong>Port:</strong> {{ log_analysis_results.dst_port }}</span>
+                  {% endif %}
+                </div>
+              {% endif %}
+            </div>
+          {% endif %}
+
+          {# Event Information #}
+          {% if log_analysis_results.event_type or log_analysis_results.timestamp %}
+            <div class="log-card" style="animation: fadeInUp 0.6s ease-out 0.2s both;">
+              <h4 style="margin-top: 0; margin-bottom: 12px; color: var(--text-primary); font-size: 16px; display: flex; align-items: center; gap: 8px;">
+                <i data-feather="clock"></i> Event Details
+              </h4>
+              <table class="detections-table">
+                {% if log_analysis_results.timestamp %}
+                  <tr><th>Timestamp</th><td style="font-family: monospace; font-size: 13px;">{{ log_analysis_results.timestamp }}</td></tr>
+                {% endif %}
+                {% if log_analysis_results.event_type %}
+                  <tr><th>Event Type</th><td>{{ log_analysis_results.event_type }}</td></tr>
+                {% endif %}
+                {% if log_analysis_results.action %}
+                  <tr><th>Action</th><td>{{ log_analysis_results.action }}</td></tr>
+                {% endif %}
+                {% if log_analysis_results.log_format %}
+                  <tr><th>Log Format</th><td>{{ log_analysis_results.log_format }}</td></tr>
+                {% endif %}
+              </table>
+            </div>
+          {% endif %}
+
+          {# User Information #}
+          {% set user_info = log_analysis_results.user_information if log_analysis_results.user_information is defined else None %}
+          {% if log_analysis_results.username or log_analysis_results.user_agent or (user_info and (user_info.username or user_info.email)) %}
+            <div class="log-card" style="animation: fadeInUp 0.6s ease-out 0.3s both;">
+              <h4 style="margin-top: 0; margin-bottom: 12px; color: var(--text-primary); font-size: 16px; display: flex; align-items: center; gap: 8px;">
+                <i data-feather="user"></i> User Information
+              </h4>
+              <table class="detections-table">
+                {% if user_info and user_info.username %}
+                  <tr><th>Mobileye Username</th><td style="font-family: monospace;">{{ user_info.username }}</td></tr>
+                {% endif %}
+                {% if user_info and user_info.email %}
+                  <tr><th>Mobileye Email</th><td style="font-family: monospace;">{{ user_info.email }}</td></tr>
+                {% endif %}
+                {% if log_analysis_results.username and (not user_info or log_analysis_results.username != user_info.username) %}
+                  <tr><th>Username</th><td style="font-family: monospace;">{{ log_analysis_results.username }}</td></tr>
+                {% endif %}
+                {% if log_analysis_results.user_agent %}
+                  <tr><th>User Agent</th><td style="font-size: 12px; word-break: break-all;">{{ log_analysis_results.user_agent[:80] }}{% if log_analysis_results.user_agent|length > 80 %}...{% endif %}</td></tr>
+                {% endif %}
+              </table>
+            </div>
+          {% endif %}
+
+          {# HTTP Information #}
+          {% if log_analysis_results.http_method or log_analysis_results.http_status or log_analysis_results.url %}
+            <div class="log-card" style="animation: fadeInUp 0.6s ease-out 0.4s both;">
+              <h4 style="margin-top: 0; margin-bottom: 12px; color: var(--text-primary); font-size: 16px; display: flex; align-items: center; gap: 8px;">
+                <i data-feather="globe"></i> HTTP Request
+              </h4>
+              <table class="detections-table">
+                {% if log_analysis_results.http_method %}
+                  <tr><th>Method</th><td>{{ log_analysis_results.http_method }}</td></tr>
+                {% endif %}
+                {% if log_analysis_results.http_status %}
+                  <tr>
+                    <th>Status</th>
+                    <td style="color: {% if log_analysis_results.http_status.startswith('2') %}var(--success-text){% elif log_analysis_results.http_status.startswith('4') or log_analysis_results.http_status.startswith('5') %}var(--danger-text){% else %}var(--text-primary){% endif %};">
+                      {{ log_analysis_results.http_status }}
+                    </td>
+                  </tr>
+                {% endif %}
+                {% if log_analysis_results.url %}
+                  <tr><th>URL</th><td style="font-size: 12px; word-break: break-all;">{{ log_analysis_results.url[:60] }}{% if log_analysis_results.url|length > 60 %}...{% endif %}</td></tr>
+                {% endif %}
+              </table>
+            </div>
+          {% endif %}
+
+          {# File/Process Information #}
+          {% if log_analysis_results.file_path or log_analysis_results.process_name %}
+            <div class="log-card" style="animation: fadeInUp 0.6s ease-out 0.5s both;">
+              <h4 style="margin-top: 0; margin-bottom: 12px; color: var(--text-primary); font-size: 16px; display: flex; align-items: center; gap: 8px;">
+                <i data-feather="file"></i> File/Process
+              </h4>
+              <table class="detections-table">
+                {% if log_analysis_results.file_path %}
+                  <tr><th>File Path</th><td style="font-family: monospace; font-size: 12px; word-break: break-all;">{{ log_analysis_results.file_path }}</td></tr>
+                {% endif %}
+                {% if log_analysis_results.process_name %}
+                  <tr><th>Process</th><td style="font-family: monospace;">{{ log_analysis_results.process_name }}</td></tr>
+                {% endif %}
+              </table>
+            </div>
+          {% endif %}
+
+        </div>
+
+        {# IP Addresses List #}
+        {% if log_analysis_results.ips %}
+          <div class="log-card" style="animation: fadeInUp 0.6s ease-out 0.6s both; margin-bottom: 20px;">
+            <h4 style="margin-top: 0; margin-bottom: 12px; color: var(--text-primary); font-size: 16px; display: flex; align-items: center; gap: 8px;">
+              <i data-feather="map-pin"></i> IP Addresses ({{ log_analysis_results.ips|length }})
+            </h4>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              {% for ip_info in log_analysis_results.ips %}
+                <button onclick="searchIndicator('{{ ip_info.ip }}')" style="
+                  background: var(--bg-light);
+                  border: 1px solid var(--border-color);
+                  color: var(--text-primary);
+                  padding: 8px 12px;
+                  border-radius: 6px;
+                  cursor: pointer;
+                  font-family: monospace;
+                  font-size: 13px;
+                  transition: all 0.2s ease;
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                " onmouseover="this.style.borderColor='var(--accent-blue)'; this.style.transform='translateY(-2px)'" 
+                   onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='translateY(0)'">
+                  <span style="
+                    background: {% if ip_info.type == 'Source' %}rgba(59, 130, 246, 0.2){% elif ip_info.type == 'Destination' %}rgba(239, 68, 68, 0.2){% else %}rgba(148, 163, 184, 0.2){% endif %};
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    font-size: 10px;
+                    font-weight: 600;
+                  ">{{ ip_info.type }}</span>
+                  {{ ip_info.ip }}
+                  <i data-feather="search" style="width: 14px; height: 14px;"></i>
+                </button>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+
+        {# URLs and Domains #}
+        {% if log_analysis_results.urls or log_analysis_results.domains %}
+          <div class="log-card" style="animation: fadeInUp 0.6s ease-out 0.7s both; margin-bottom: 20px;">
+            <h4 style="margin-top: 0; margin-bottom: 12px; color: var(--text-primary); font-size: 16px; display: flex; align-items: center; gap: 8px;">
+              <i data-feather="link"></i> URLs & Domains
+            </h4>
+            {% if log_analysis_results.urls %}
+              <div style="margin-bottom: 12px;">
+                <strong style="font-size: 13px; color: var(--text-secondary);">URLs:</strong>
+                <div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px;">
+                  {% for url in log_analysis_results.urls[:5] %}
+                    <a href="{{ url }}" target="_blank" style="
+                      color: var(--accent-blue);
+                      text-decoration: none;
+                      font-size: 12px;
+                      word-break: break-all;
+                      padding: 4px 8px;
+                      background: rgba(59, 130, 246, 0.1);
+                      border-radius: 4px;
+                    ">{{ url[:50] }}{% if url|length > 50 %}...{% endif %}</a>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endif %}
+            {% if log_analysis_results.domains %}
+              <div>
+                <strong style="font-size: 13px; color: var(--text-secondary);">Domains:</strong>
+                <div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px;">
+                  {% for domain in log_analysis_results.domains[:10] %}
+                    <button onclick="searchIndicator('{{ domain }}')" style="
+                      background: var(--bg-light);
+                      border: 1px solid var(--border-color);
+                      color: var(--text-primary);
+                      padding: 4px 8px;
+                      border-radius: 4px;
+                      cursor: pointer;
+                      font-size: 12px;
+                      font-family: monospace;
+                    ">{{ domain }}</button>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        {# Hashes #}
+        {% if log_analysis_results.hashes %}
+          <div class="log-card" style="animation: fadeInUp 0.6s ease-out 0.8s both; margin-bottom: 20px;">
+            <h4 style="margin-top: 0; margin-bottom: 12px; color: var(--text-primary); font-size: 16px; display: flex; align-items: center; gap: 8px;">
+              <i data-feather="hash"></i> Hashes ({{ log_analysis_results.hashes|length }})
+            </h4>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              {% for hash_info in log_analysis_results.hashes %}
+                <div style="
+                  background: var(--bg-light);
+                  border: 1px solid var(--border-color);
+                  border-radius: 6px;
+                  padding: 10px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  gap: 12px;
+                ">
+                  <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                      <span style="
+                        background: var(--accent-blue);
+                        color: white;
+                        padding: 2px 8px;
+                        border-radius: 4px;
+                        font-size: 11px;
+                        font-weight: 600;
+                        text-transform: uppercase;
+                      ">{{ hash_info.type }}</span>
+                    </div>
+                    <button onclick="searchIndicator('{{ hash_info.hash }}')" style="
+                      background: transparent;
+                      border: none;
+                      color: var(--text-primary);
+                      padding: 0;
+                      cursor: pointer;
+                      font-family: monospace;
+                      font-size: 13px;
+                      word-break: break-all;
+                      text-align: left;
+                      width: 100%;
+                      transition: color 0.2s ease;
+                    " onmouseover="this.style.color='var(--accent-blue)'" 
+                       onmouseout="this.style.color='var(--text-primary)'">
+                      {{ hash_info.hash }}
+                    </button>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+
+      {% endif %}
+    </section>
+    {% if news or result %}
+    <section class="surface-grid">
+      {% if news %}
+      <div class="neon-panel news-card">
+        <div class="panel-header">
+          <h3><i data-feather="rss"></i> Latest Cyber News</h3>
+          <button type="button" class="news-toggle" id="news-toggle" data-state="open" onclick="toggleNews()">
+            <span class="icon" data-feather="chevron-up"></span>
+            <span class="label">Hide</span>
+          </button>
+        </div>
+        <div class="news-body" id="news-body">
+          <ul class="news-list">
+            {% for item in news %}
+              <li class="news-item">
+                <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer">
+                  <i data-feather="external-link" style="width:14px;height:14px;"></i>
+                  {{ item.title }}
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+      {% endif %}
+      {% if result %}
+        <div class="neon-panel result-banner">
+          <div class="section-title"><i data-feather="info"></i> Notice</div>
+          <p class="result-card">{{ result }}</p>
+        </div>
+      {% endif %}
+    </section>
     {% endif %}
 
     {% if vt or ipdb %}
-      <div class="cards-container">
+      <section class="neon-panel analytics-suite">
+        <div class="section-title">
+          <i data-feather="shield"></i> Threat Intelligence Stack
+        </div>
+        <div class="cards-container">
         {% if ipdb %} 
 <div class="card ipdb-card">
-            <h3>IPDB Summary</h3>
-            <table class="detections-table">
-              <tr><th>Abuse Score</th><td>{{ ipdb.abuseScore }}</td></tr>
-              <tr><th>Total Reports</th><td>{{ ipdb.totalReports }}</td></tr>
-              <tr>
-                <th>Country</th>
-                <td>
-                  {% if ipdb.flag_url %}
-                    <img src="{{ ipdb.flag_url }}" alt="{{ ipdb.country }} flag" style="width: 20px; height: auto; vertical-align: middle; margin-right: 8px;">
-                  {% endif %}
-                  {{ ipdb.country }}
-                </td>
-              </tr>
-              <tr><th>ISP</th><td>{{ ipdb.isp }}</td></tr>
-              <tr><th>Domain</th><td>{{ ipdb.domain }}</td></tr>
-            </table>
-            {% if ipdb.error %}
-              <div class="err">IPDB Error: {{ ipdb.error }}</div>
-            {% endif %}
+          <h3>IPDB Summary</h3>
+          <table class="detections-table">
+            <tr><th>Abuse Score</th><td>{{ ipdb.abuseScore }}</td></tr>
+            <tr><th>Total Reports</th><td>{{ ipdb.totalReports }}</td></tr>
+            <tr>
+              <th>Country</th>
+              <td>
+                {% if ipdb.flag_url %}
+                  <img src="{{ ipdb.flag_url }}" alt="{{ ipdb.country }} flag" style="width: 20px; height: auto; vertical-align: middle; margin-right: 8px;">
+                {% endif %}
+                {{ ipdb.country }}
+              </td>
+            </tr>
+            <tr><th>ISP</th><td>{{ ipdb.isp }}</td></tr>
+            <tr><th>Domain</th><td>{{ ipdb.domain }}</td></tr>
+          </table>
+          {% if ipdb.error %}
+            <div class="err">IPDB Error: {{ ipdb.error }}</div>
+          {% endif %}
 
-            {% if ipdb.reports %}
-              <button class="toggle-btn" onclick="toggleIpdbReports()">
-                Show/Hide {{ ipdb.reports|length }} Recent Reports
-              </button>
-              <div id="ipdb-reports" style="display: none;">
-                <table class="detections-table">
-                  <thead>
-                    <tr>
-                      <th class="col-ipdb-date">Reported</th>
-                      <th class="col-ipdb-cat">Categories</th>
-                      <th class="col-ipdb-comment">Comment</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% for report in ipdb.reports %}
-                    <tr>
-                      <td class="col-ipdb-date">{{ report.reportedAt }}</td>
-                      <td class="col-ipdb-cat">{{ report.categories | join(', ') }}</td>
-                      <td class="col-ipdb-comment">{{ report.comment }}</td>
-                    </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-            {% endif %}
+          {% if ipdb.reports %}
+            <button class="btn-secondary toggle-btn" onclick="toggleIpdbReports()">
+              Show/Hide {{ ipdb.reports|length }} Recent Reports
+            </button>
+            <div id="ipdb-reports" style="display: none;">
+              <table class="detections-table">
+                <thead>
+                  <tr>
+                    <th class="col-ipdb-date">Reported</th>
+                    <th class="col-ipdb-cat">Categories</th>
+                    <th class="col-ipdb-comment">Comment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for report in ipdb.reports %}
+                  <tr>
+                    <td class="col-ipdb-date">{{ report.reportedAt }}</td>
+                    <td class="col-ipdb-cat">{{ report.categories | join(', ') }}</td>
+                    <td class="col-ipdb-comment">{{ report.comment }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
             </div>
+          {% endif %}
+          </div>
         {% endif %}
 
         {% if vt %}
@@ -474,7 +1740,7 @@
             {% endif %}
             
             {% if vt.kind in ('file', 'ip_address', 'domain') and vt.detections %}
-              <button class="toggle-btn" onclick="toggleDetections()">
+              <button class="btn-secondary toggle-btn" onclick="toggleDetections()">
                 Show/Hide {{ vt.detections|length }} Engine Results
               </button>
               <div id="vt-detections" style="display: none;">
@@ -509,90 +1775,110 @@
             </div>
         {% endif %}
         
+        {% set critical_total = malicious|default(0, true) + suspicious|default(0, true) %}
+        {% set risk_total = malicious|default(0, true) + suspicious|default(0, true) + harmless|default(0, true) + undetected|default(0, true) + timeout|default(0, true) %}
+        {% set risk_segments = [
+          {'label': 'Malicious', 'value': malicious|default(0, true), 'color': '#5eead4'},
+          {'label': 'Suspicious', 'value': suspicious|default(0, true), 'color': '#38bdf8'},
+          {'label': 'Harmless', 'value': harmless|default(0, true), 'color': '#2ad397'},
+          {'label': 'Undetected', 'value': undetected|default(0, true), 'color': '#4b5f80'},
+          {'label': 'Timeout', 'value': timeout|default(0, true), 'color': '#24324d'}
+        ] %}
         <div class="card chart-card">
-            <h3>Scan Analysis</h3>
-            <div class="chart-container">
-                <canvas id="riskChart"></canvas>
+            <div class="chart-card-header">
+              <h3>Scan Analysis</h3>
+              <span class="critical-badge">
+                Critical: {{ critical_total }} {{ 'event' if critical_total == 1 else 'events' }}
+              </span>
             </div>
+            {% if risk_total > 0 %}
+            {% set radius = 78 %}
+            {% set circumference = 2 * 3.14159265 * radius %}
+            {% set arc = namespace(offset=0.0) %}
+            <div class="risk-distribution">
+              <div class="risk-ring">
+                <svg class="risk-ring-visual" viewBox="0 0 220 220" role="presentation">
+                  <circle class="risk-track" cx="110" cy="110" r="{{ radius }}" />
+                  {% for segment in risk_segments if segment.value > 0 %}
+                    {% set percent = (segment.value / risk_total) * 100 %}
+                    {% set dash = circumference * percent / 100 %}
+                    <circle
+                      class="risk-segment"
+                      cx="110"
+                      cy="110"
+                      r="{{ radius }}"
+                      style="--segment-color: {{ segment.color }}; stroke-dasharray: {{ dash|round(2) }} {{ (circumference - dash)|round(2) }}; stroke-dashoffset: {{ -arc.offset|round(2) }};"
+                    />
+                    {% set arc.offset = arc.offset + dash %}
+                  {% endfor %}
+                </svg>
+                <div class="risk-center">
+                  <span class="risk-center-label">Total Events</span>
+                  <span class="risk-center-value">{{ risk_total }}</span>
+                  <span class="risk-center-caption">Scanned distribution</span>
+                </div>
+              </div>
+              <div class="risk-breakdown">
+                {% for segment in risk_segments %}
+                  {% set value = segment.value %}
+                  {% set percent = risk_total and (value / risk_total * 100) or 0 %}
+                  {% set percent_display = percent|round(1) %}
+                  <div class="risk-item">
+                    <span class="risk-dot" style="--dot-color: {{ segment.color }};"></span>
+                    <div class="risk-item-info">
+                      <div class="risk-item-header">
+                        <span class="risk-item-label">{{ segment.label }}</span>
+                        <span class="risk-item-count">{{ value }}</span>
+                      </div>
+                      <div class="risk-item-meta">
+                        <span class="risk-item-percent">{{ percent_display }}%</span>
+                        <div class="risk-item-bar">
+                          <div class="risk-item-bar-fill" style="--bar-percent: {{ percent|round(2) }}%; --bar-color: {{ segment.color }};"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% else %}
+            <div class="risk-empty">
+              No scan data available yet. Run a lookup to populate this view.
+            </div>
+            {% endif %}
         </div>
-      </div>
+        </div>
 
       <script>
         (function(){
-          // Register the datalabels plugin globally
-          Chart.register(ChartDataLabels);
+          if (typeof Chart === 'undefined') {
+            return;
+          }
 
-          // --- PIE CHART (Updated) ---
-          const pieCtx = document.getElementById('riskChart').getContext('2d');
-          const pieData = {
-            labels: ['Malicious', 'Suspicious', 'Harmless', 'Undetected', 'Timeout'],
-            datasets: [{
-              data: [
-                {{ malicious|default(0, true) }},
-                {{ suspicious|default(0, true) }},
-                {{ harmless|default(0, true) }},
-                {{ undetected|default(0, true) }},
-                {{ timeout|default(0, true) }}
-              ],
-              backgroundColor: [
-                'rgba(239, 68, 68, 0.8)',  /* Malicious (Red) */
-                'rgba(245, 158, 11, 0.8)', /* Suspicious (Amber) */
-                'rgba(34, 197, 94, 0.8)', /* Harmless (Green) */
-                'rgba(148, 163, 184, 0.8)',/* Undetected (Gray) */
-                'rgba(100, 116, 139, 0.8)' /* Timeout (Darker Gray) */
-              ],
-              borderColor: 'rgba(30, 41, 59, 0.8)',
-              borderWidth: 2
-            }]
-          };
-          new Chart(pieCtx, { 
-            type: 'pie', 
-            data: pieData, 
-            options: { 
-              responsive:true, 
-              maintainAspectRatio:false,
-              plugins: {
-                legend: {
-                  labels: {
-                    color: 'white'
-                  }
-                },
-                datalabels: {
-                  color: '#FFF',
-                  font: {
-                    weight: 'bold',
-                    size: 14,
-                    family: 'Calibri'
-                  },
-                  formatter: (value, context) => {
-                    return value > 0 ? value : ''; // Only show labels for values > 0
-                  }
-                }
-              }
-            }
-          });
+          const totalBad = {{ malicious|default(0, true) + suspicious|default(0, true) }};
+          const totalAll = {{ malicious|default(0, true) + suspicious|default(0, true) + harmless|default(0, true) + undetected|default(0, true) + timeout|default(0, true) }};
+          const totalGood = Math.max(totalAll - totalBad, 0);
 
-          // --- DOUGHNUT CHART (Existing) ---
-          const total_bad = {{ malicious|default(0) + suspicious|default(0) }};
-          const total_all = {{ malicious|default(0) + suspicious|default(0) + harmless|default(0) + undetected|default(0) + timeout|default(0) }};
-          const total_good = total_all - total_bad.
+          const scoreCanvas = document.getElementById('vtScoreChart');
+          if (!scoreCanvas) {
+            return;
+          }
 
-          const scoreCtx = document.getElementById('vtScoreChart').getContext('2d');
-          const scoreData = {
-            labels: ['Detections', 'Scanned'],
-            datasets: [{
-              data: [total_bad, total_good],
-              backgroundColor: [
-                total_bad > 0 ? 'var(--danger-text)' : 'var(--success-text)', // Red if bad, Green if 0
-                'rgba(51, 65, 85, 0.5)' // Dark gray background
-              ],
-              borderColor: 'transparent',
-              borderWidth: 0
-            }]
-          };
+          const scoreCtx = scoreCanvas.getContext('2d');
           new Chart(scoreCtx, {
             type: 'doughnut',
-            data: scoreData,
+            data: {
+              labels: ['Detections', 'Scanned'],
+              datasets: [{
+                data: [totalBad, totalAll > 0 ? totalGood : 1],
+                backgroundColor: [
+                  totalBad > 0 ? 'var(--danger-text)' : 'var(--success-text)',
+                  'rgba(51, 65, 85, 0.5)'
+                ],
+                borderColor: 'transparent',
+                borderWidth: 0
+              }]
+            },
             options: {
               responsive: true,
               maintainAspectRatio: false,
@@ -608,10 +1894,11 @@
           });
         })();
       </script>
+    </section>
     {% endif %}
-  </div>
+  </main>
 
-  <footer><p>&copy; 2025 Threat Intelligence Dashboard</p></footer>
+  <footer><p>&copy; 2025 verdicom.io</p></footer>
 
   <script>
     function toggleDetections() {
@@ -631,9 +1918,66 @@
         el.style.display = 'none';
       }
     }
+
+    function toggleNews() {
+      var body = document.getElementById('news-body');
+      var toggle = document.getElementById('news-toggle');
+      if (!body || !toggle) return;
+
+      var collapsed = body.classList.toggle('collapsed');
+      toggle.setAttribute('data-state', collapsed ? 'closed' : 'open');
+
+      var label = toggle.querySelector('.label');
+      if (label) {
+        label.textContent = collapsed ? 'Show' : 'Hide';
+      }
+
+      var icon = toggle.querySelector('.icon');
+      if (icon) {
+        icon.setAttribute('data-feather', collapsed ? 'chevron-down' : 'chevron-up');
+        feather.replace();
+      }
+    }
+
+    // --- הוספת פונקציית JavaScript חדשה ---
+    function toggleLogAnalyzer() {
+      var el = document.getElementById('log-analyzer-section');
+      if (el.style.display === 'none') {
+        el.style.display = 'block';
+      } else {
+        el.style.display = 'none';
+      }
+    }
+
+    // --- הוספת פונקציית JavaScript חדשה ---
+    function searchIndicator(indicator) {
+      // 1. מצא את תיבת החיפוש הראשית
+      var mainQueryInput = document.querySelector('input[name="query"]');
+      
+      // 2. מצא את הטופס הראשי
+      var mainForm = document.querySelector('form[action="/lookup"]');
+      
+      // 3. שים את ה-IP בתיבת החיפוש הראשית
+      mainQueryInput.value = indicator;
+      
+      // 4. שלח את הטופס הראשי
+      mainForm.submit();
+    }
   </script>
   <script>
     feather.replace()
+    
+    // Re-initialize feather icons after dynamic content loads
+    document.addEventListener('DOMContentLoaded', function() {
+      feather.replace();
+    });
+    
+    // Re-initialize icons after log analysis (when form is submitted and page reloads)
+    if (document.getElementById('log-analyzer-section') && document.getElementById('log-analyzer-section').style.display !== 'none') {
+      setTimeout(function() {
+        feather.replace();
+      }, 100);
+    }
   </script>
 </body>
 </html>
