@@ -1,0 +1,40 @@
+{
+  "name": "test-msg-files",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "build": "npm run build:css && npm run build:js",
+    "build:js": "browserify src/js/main.js -o dist/bundle.js",
+    "build:css": "tailwindcss -i src/styles.css -o dist/styles.css",
+    "watch": "concurrently \"npm run watch:js\" \"npm run watch:css\"",
+    "watch:js": "watchify src/js/main.js -o dist/bundle.js -v",
+    "watch:css": "tailwindcss -i src/styles.css -o dist/styles.css --watch",
+    "dev": "concurrently \"npm run watch\" \"live-server --watch=dist --port=8080\"",
+    "start": "npm run build && npx live-server dist --port=8080",
+    "build-gh-pages": "npm run build && rm -rf .gh-pages && mkdir -p .gh-pages && cp -r dist .gh-pages/ && cp index.html .gh-pages/ && cp -r res .gh-pages/ && cp -r doc .gh-pages/ && cp tailwind.config.js .gh-pages/ && cp postcss.config.js .gh-pages/",
+    "deploy": "npm run build-gh-pages && gh-pages -d .gh-pages"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@kenjiuno/decompressrtf": "^0.1.4",
+    "@kenjiuno/msgreader": "^1.22.0",
+    "emailjs-mime-codec": "^2.0.9",
+    "iconv-lite": "^0.6.3",
+    "md5": "^2.3.0",
+    "rtf-stream-parser": "^3.8.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.16",
+    "browserify": "^17.0.0",
+    "concurrently": "^8.2.2",
+    "cpx": "^1.5.0",
+    "gh-pages": "^6.1.1",
+    "live-server": "^1.2.2",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.4.0",
+    "watchify": "^4.0.0"
+  }
+}

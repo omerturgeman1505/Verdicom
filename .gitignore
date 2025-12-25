@@ -55,3 +55,19 @@ Thumbs.db
 # Project specific
 *.code-workspace
 
+# Node modules
+node_modules/
+package-lock.json
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+threat_intel_cache.db
+
+# Cursor IDE
+.cursor/
+
+# Debug logs
+debug.log
+
