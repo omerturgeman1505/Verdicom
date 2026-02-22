@@ -19,3 +19,4 @@ dkimpy>=1.0.5
 python-whois>=0.7.3
 ipaddress>=1.0.23
 dnspython>=2.2.1
+gunicorn
