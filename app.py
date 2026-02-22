@@ -1315,9 +1315,10 @@ def get_abuseipdb_info(ip: str):
 # ---------- routes ----------
 @app.route("/", methods=["GET"])
 def home():
-    news_data = get_cyber_news_cached()
-    # Get latest VirusTotal comments (cached for 1 hour)
-    vt_comments, comments_error = get_vt_comments_cached(limit=10)
+    # Keep homepage non-blocking for health checks and first paint in production.
+    # External feeds (news/comments) can hang and make the whole site appear down.
+    news_data = _news_cache["data"] if _news_cache.get("data") else []
+    vt_comments, comments_error = None, None
     recent_history = get_recent_history(limit=10)
     missing = []
     if not VT_API_KEY: missing.append("VT_API_KEY")
