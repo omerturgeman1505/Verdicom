@@ -1323,6 +1323,224 @@
       border-color: rgba(94, 234, 212, 0.1) !important;
     }
 
+    /* --- Mobile hardening layer (layout + interactions) --- */
+    @media (max-width: 1024px) {
+      .content-shell {
+        padding: 28px 16px 72px;
+        gap: 18px;
+      }
+
+      .neon-panel {
+        padding: 18px 16px;
+        border-radius: 14px;
+      }
+
+      .surface-grid,
+      .cards-container {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .metric-tiles {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      #recent-history-container {
+        display: none !important;
+      }
+
+      /* Modal: keep viewer fully usable on tablets/phones */
+      #file-viewer-modal > div {
+        position: fixed !important;
+        top: 12px !important;
+        left: 12px !important;
+        right: 12px !important;
+        bottom: 12px !important;
+        width: auto !important;
+        height: auto !important;
+        max-width: none !important;
+        max-height: none !important;
+        transform: none !important;
+      }
+
+      #file-viewer-modal #viewer-content {
+        padding: 12px !important;
+      }
+
+      #dossier-modal > div {
+        max-width: none !important;
+        margin: 12px !important;
+      }
+
+      #dossier-modal > div > div:first-child {
+        padding: 14px 16px !important;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      #dossier-content {
+        padding: 16px !important;
+      }
+
+      #cy {
+        height: 320px !important;
+      }
+
+      #cy-zoom-controls {
+        top: auto !important;
+        bottom: 10px !important;
+        left: 50% !important;
+        right: auto !important;
+        transform: translateX(-50%) !important;
+        flex-direction: row !important;
+      }
+
+      #intel-card {
+        top: auto !important;
+        bottom: 12px !important;
+        left: 12px !important;
+        right: 12px !important;
+        width: auto !important;
+        max-height: 45vh;
+        overflow: auto;
+      }
+    }
+
+    @media (max-width: 768px) {
+      html,
+      body {
+        overflow-x: hidden;
+      }
+
+      header {
+        padding: 16px 12px;
+      }
+
+      .brand-text {
+        font-size: 20px;
+        letter-spacing: 1px;
+      }
+
+      .brand-logo {
+        height: 34px;
+        margin-right: -8px;
+      }
+
+      .lookup-form {
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .lookup-form .control {
+        min-width: 0;
+        width: 100%;
+      }
+
+      .lookup-form button,
+      .btn-primary,
+      .btn-secondary,
+      .toggle-btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .section-title {
+        font-size: 15px;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      #email-drop-zone {
+        padding: 24px 12px !important;
+      }
+
+      #email-report-container .neon-panel {
+        padding: 14px !important;
+      }
+
+      #email-verdict-text {
+        font-size: 19px !important;
+      }
+
+      #email-score-text {
+        font-size: 14px !important;
+      }
+
+      .metric-card .value {
+        font-size: 22px;
+      }
+
+      #email-metadata-table,
+      #email-metadata-table tbody,
+      #email-metadata-table tr,
+      #email-metadata-table th,
+      #email-metadata-table td {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      #email-metadata-table tr {
+        border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+        padding: 10px 0;
+      }
+
+      #email-metadata-table th {
+        padding: 0 0 4px 0;
+        font-size: 12px;
+      }
+
+      #email-metadata-table td {
+        padding: 0;
+      }
+
+      .detections-table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      #dossier-content > div {
+        padding: 28px 14px !important;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .content-shell {
+        padding: 20px 10px 60px;
+      }
+
+      .neon-panel {
+        padding: 12px 10px;
+      }
+
+      .metric-tiles {
+        grid-template-columns: 1fr;
+      }
+
+      #file-viewer-modal > div {
+        top: 6px !important;
+        left: 6px !important;
+        right: 6px !important;
+        bottom: 6px !important;
+      }
+
+      #file-viewer-modal #close-viewer-btn,
+      #close-email-report {
+        padding: 7px 10px !important;
+        font-size: 12px !important;
+      }
+
+      #cy {
+        height: 260px !important;
+      }
+
+      #dossier-modal > div {
+        margin: 6px !important;
+      }
+    }
+
     footer {
       text-align: center;
       padding: 40px 20px 20px;
