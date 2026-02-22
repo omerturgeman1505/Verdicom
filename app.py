@@ -2,12 +2,13 @@ import re
 import os
 import requests
 from bs4 import BeautifulSoup
-from flask import Flask, request, render_template, redirect, url_for, jsonify
+from flask import Flask, request, render_template, redirect, url_for, jsonify, session, has_request_context
 from dotenv import load_dotenv
 import certifi
 import ssl
 import urllib3
 import json
+import html
 from datetime import datetime
 from collections import defaultdict
 from functools import lru_cache
@@ -19,6 +20,7 @@ import tempfile
 import traceback
 import hashlib
 import base64
+import uuid
 import zipfile
 import io
 import xml.etree.ElementTree as ET
@@ -111,6 +113,11 @@ except ImportError:
 
 load_dotenv()
 app = Flask(__name__)
+# Session-backed viewer ID is used to isolate per-computer search history.
+app.config["SECRET_KEY"] = os.environ.get("FLASK_SECRET_KEY", os.urandom(32).hex())
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SESSION_COOKIE_SECURE", "false").lower() == "true"
 
 # Template filter for converting Unix timestamp to readable date
 @app.template_filter('timestamp_to_date')
@@ -142,6 +149,19 @@ def init_db():
     # Create index for faster history queries
     cursor.execute('''
         CREATE INDEX IF NOT EXISTS idx_timestamp ON cache(timestamp DESC)
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS search_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            viewer_id TEXT NOT NULL,
+            indicator TEXT NOT NULL,
+            lookup_type TEXT NOT NULL,
+            timestamp REAL NOT NULL
+        )
+    ''')
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_search_history_viewer_ts
+        ON search_history(viewer_id, timestamp DESC)
     ''')
     
     # Create AI training data table for lifelong learning
@@ -270,6 +290,10 @@ def get_cached_data(indicator: str, fetch_function, cache_type: str, max_age_hou
     """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    current_time = time.time()
+    viewer_id = get_or_create_viewer_id()
+    if viewer_id:
+        record_search_history(cursor, viewer_id, indicator, cache_type, current_time)
     
     # Check cache
     cursor.execute('''
@@ -278,8 +302,6 @@ def get_cached_data(indicator: str, fetch_function, cache_type: str, max_age_hou
     ''', (indicator, cache_type))
     
     row = cursor.fetchone()
-    current_time = time.time()
-    
     if row:
         cached_data, cached_timestamp = row
         age_hours = (current_time - cached_timestamp) / 3600
@@ -313,35 +335,65 @@ def get_cached_data(indicator: str, fetch_function, cache_type: str, max_age_hou
     conn.close()
     return data, error
 
+def get_or_create_viewer_id():
+    """
+    Get a stable per-browser viewer identifier from Flask session.
+    This keeps each computer's search history isolated from others.
+    """
+    if not has_request_context():
+        return None
+    viewer_id = session.get("viewer_id")
+    if not viewer_id:
+        viewer_id = uuid.uuid4().hex
+        session["viewer_id"] = viewer_id
+    return viewer_id
+
+def record_search_history(cursor, viewer_id: str, indicator: str, lookup_type: str, timestamp: float):
+    """Record one lookup event for a specific viewer."""
+    cursor.execute('''
+        INSERT INTO search_history (viewer_id, indicator, lookup_type, timestamp)
+        VALUES (?, ?, ?, ?)
+    ''', (viewer_id, indicator, lookup_type, timestamp))
+
 def get_recent_history(limit: int = 10):
-    """Get recent search history from cache - persistent across sessions."""
+    """Get recent search history for the current viewer only."""
+    viewer_id = get_or_create_viewer_id()
+    if not viewer_id:
+        return []
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
-    # Get unique indicators (one per indicator, regardless of type) 
-    # ordered by most recent timestamp - this ensures history persists
+
+    # Keep only the latest event per indicator for this viewer.
     cursor.execute('''
-        SELECT id, type, MAX(timestamp) as latest_timestamp 
-        FROM cache
-        GROUP BY id
-        ORDER BY latest_timestamp DESC
+        SELECT h.indicator, h.lookup_type, h.timestamp
+        FROM search_history h
+        INNER JOIN (
+            SELECT indicator, MAX(timestamp) AS latest_timestamp
+            FROM search_history
+            WHERE viewer_id = ?
+            GROUP BY indicator
+        ) latest
+        ON h.indicator = latest.indicator AND h.timestamp = latest.latest_timestamp
+        WHERE h.viewer_id = ?
+        ORDER BY h.timestamp DESC
         LIMIT ?
-    ''', (limit,))
+    ''', (viewer_id, viewer_id, limit))
     
     rows = cursor.fetchall()
     conn.close()
     
     history = []
     for row in rows:
-        indicator, cache_type, timestamp = row
+        indicator, lookup_type, timestamp = row
         history.append({
             'indicator': indicator,
-            'type': cache_type,
+            'type': lookup_type,
             'timestamp': timestamp,
             'age_hours': (time.time() - timestamp) / 3600
         })
     
-    print(f"[History] Retrieved {len(history)} items from persistent cache (DB: {DB_PATH})")
+    print(f"[History] Retrieved {len(history)} items for viewer {viewer_id[:8]}... (DB: {DB_PATH})")
     return history
 
 def get_cached_lookup_data(query: str):
@@ -6922,6 +6974,50 @@ def extract_strings_from_binary(data: bytes) -> str:
     
     return all_text
 
+def sanitize_header_value(value, header_name: str = "") -> str:
+    """
+    Normalize header values for safe/clean display.
+    Prevents HTML/body leakage and unreadable binary junk in key headers.
+    """
+    if value is None:
+        return ""
+
+    try:
+        text = str(value)
+    except Exception:
+        return ""
+
+    if not text:
+        return ""
+
+    # Remove embedded HTML/script fragments and decode entities.
+    text = re.sub(r'(?is)<(script|style)[^>]*>.*?</\1>', ' ', text)
+    text = re.sub(r'(?is)<[^>]+>', ' ', text)
+    text = html.unescape(text)
+
+    # Remove control chars except common whitespace.
+    text = re.sub(r'[\x00-\x08\x0B-\x1F\x7F]', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+
+    lower_header = (header_name or "").lower()
+    if lower_header in {"from", "to", "subject", "date", "message-id", "return-path", "reply-to"}:
+        # Trim accidental spillover of subsequent headers/body snippets.
+        for marker in (" Received:", " Authentication-Results:", " DKIM-Signature:", " MIME-Version:"):
+            if marker in text:
+                text = text.split(marker, 1)[0].strip()
+
+        # Cap noisy values aggressively for user-facing header fields.
+        if len(text) > 300:
+            text = text[:300].rstrip() + "..."
+
+        # If mostly unreadable junk, hide it instead of showing corrupted bytes.
+        if text:
+            printable_ratio = sum(ch.isprintable() for ch in text) / max(len(text), 1)
+            if printable_ratio < 0.85:
+                return "N/A"
+
+    return text
+
 def scrape_visual_headers(text: str) -> dict:
     """
     Extract email headers from raw text by looking for header patterns.
@@ -6939,24 +7035,21 @@ def scrape_visual_headers(text: str) -> dict:
         return headers
     
     # Extract Subject
-    subject_match = re.search(r'Subject:\s*([^\r\n]+)', text, re.IGNORECASE)
+    subject_match = re.search(r'(?im)^\s*Subject:\s*([^\r\n]+)', text)
     if subject_match:
-        headers["Subject"] = subject_match.group(1).strip()
+        headers["Subject"] = sanitize_header_value(subject_match.group(1), "Subject")
     
     # Extract From (handles both simple and formatted email addresses)
-    from_match = re.search(r'From:\s*([^\r\n<]+)', text, re.IGNORECASE)
+    from_match = re.search(r'(?im)^\s*From:\s*([^\r\n]+)', text)
     if from_match:
-        from_value = from_match.group(1).strip()
-        # Remove email address if present, keep name
-        from_value = re.sub(r'<[^>]+>', '', from_value).strip()
+        from_value = sanitize_header_value(from_match.group(1), "From")
         if from_value:
             headers["From"] = from_value
     
     # Extract To
-    to_match = re.search(r'To:\s*([^\r\n<]+)', text, re.IGNORECASE)
+    to_match = re.search(r'(?im)^\s*To:\s*([^\r\n]+)', text)
     if to_match:
-        to_value = to_match.group(1).strip()
-        to_value = re.sub(r'<[^>]+>', '', to_value).strip()
+        to_value = sanitize_header_value(to_match.group(1), "To")
         if to_value:
             headers["To"] = to_value
     
@@ -6969,7 +7062,7 @@ def scrape_visual_headers(text: str) -> dict:
     for pattern in date_patterns:
         date_match = re.search(pattern, text, re.IGNORECASE)
         if date_match:
-            headers["Date"] = date_match.group(1).strip()
+            headers["Date"] = sanitize_header_value(date_match.group(1), "Date")
             break
     
     return headers
@@ -7640,13 +7733,13 @@ def analyze_email_content(file_path):
                     if msg_reader_result.get('headers'):
                         msg_headers = msg_reader_result['headers']
                         if msg_headers.get('subject'):
-                            headers['Subject'] = msg_headers['subject']
+                            headers['Subject'] = sanitize_header_value(msg_headers['subject'], 'Subject')
                         if msg_headers.get('from'):
-                            headers['From'] = msg_headers['from']
+                            headers['From'] = sanitize_header_value(msg_headers['from'], 'From')
                         if msg_headers.get('to'):
-                            headers['To'] = msg_headers['to']
+                            headers['To'] = sanitize_header_value(msg_headers['to'], 'To')
                         if msg_headers.get('date'):
-                            headers['Date'] = msg_headers['date']
+                            headers['Date'] = sanitize_header_value(msg_headers['date'], 'Date')
                     
                     # Merge body text and HTML
                     if msg_reader_result.get('body'):
@@ -7757,7 +7850,7 @@ def analyze_email_content(file_path):
                 if msg_results.get('headers'):
                     for key, value in msg_results['headers'].items():
                         if value and value not in ["N/A", "Unknown", None]:
-                            headers[key] = str(value)
+                            headers[key] = sanitize_header_value(value, key)
                             print(f"[Onion] ✓ Merged header: {key} = {value}")
                 
                 # CRITICAL MERGE: Body text
@@ -7950,6 +8043,7 @@ def analyze_email_content(file_path):
         subject_match = re.search(r'Subject:\s*([^\r\n<]+)', base_text, re.IGNORECASE)
         if subject_match:
             headers["Subject"] = subject_match.group(1).strip()
+            headers["Subject"] = sanitize_header_value(headers["Subject"], "Subject")
             print(f"[Onion] ✓ Recovered Subject from text: {headers['Subject'][:50]}...")
     
     if headers.get("From") in [None, "N/A", "Unknown", ""]:
@@ -7959,7 +8053,7 @@ def analyze_email_content(file_path):
             # Clean email addresses if present
             from_value = re.sub(r'<[^>]+>', '', from_value).strip()
             if from_value:
-                headers["From"] = from_value
+                headers["From"] = sanitize_header_value(from_value, "From")
                 print(f"[Onion] ✓ Recovered From from text: {headers['From'][:50]}...")
     
     if headers.get("To") in [None, "N/A", "Unknown", ""]:
@@ -7968,13 +8062,14 @@ def analyze_email_content(file_path):
             to_value = to_match.group(1).strip()
             to_value = re.sub(r'<[^>]+>', '', to_value).strip()
             if to_value:
-                headers["To"] = to_value
+                headers["To"] = sanitize_header_value(to_value, "To")
                 print(f"[Onion] ✓ Recovered To from text: {headers['To'][:50]}...")
     
     if headers.get("Date") in [None, "N/A", "Unknown", ""]:
         date_match = re.search(r'(?:Date|Sent):\s*([^\r\n]+)', base_text, re.IGNORECASE)
         if date_match:
             headers["Date"] = date_match.group(1).strip()
+            headers["Date"] = sanitize_header_value(headers["Date"], "Date")
             print(f"[Onion] ✓ Recovered Date from text: {headers['Date'][:50]}...")
     
     # Use scrape_visual_headers as additional fallback
@@ -8682,9 +8777,9 @@ def analyze_email_content(file_path):
         # Skip internal metadata headers
         if not key.startswith('_'):
             if isinstance(value, list):
-                message_details[key] = value
+                message_details[key] = [sanitize_header_value(v, key) for v in value if sanitize_header_value(v, key)]
             else:
-                message_details[key] = str(value) if value else ""
+                message_details[key] = sanitize_header_value(value, key) if value else ""
     
     # Final Verdict Calculation
     # Check if verdict was already set to MALICIOUS due to negative community_score
@@ -8699,9 +8794,13 @@ def analyze_email_content(file_path):
         elif len(results['urls']) > 0 or len(results['ips']) > 0 or len(results['attachments']) > 0:
             results['verdict'] = "CLEAN"
             results["verdict_reasons"].append(f"Email contains IOCs but threat score ({results['score']}) is below suspicious threshold")
-    else:
+        else:
             results['verdict'] = "UNKNOWN"
             results["verdict_reasons"].append("No IOCs found and threat score is low")
+
+    # Final sanitization for UI metadata fields.
+    for core_header in ("From", "To", "Subject", "Date", "Message-ID"):
+        headers[core_header] = sanitize_header_value(headers.get(core_header, ""), core_header) or "N/A"
     
     # Sort URLs by threat level (malicious first)
     final_url_objects.sort(key=lambda x: (x.get("malicious", 0) * 1000 + x.get("suspicious", 0)), reverse=True)

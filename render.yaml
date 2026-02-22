@@ -3,7 +3,7 @@ services:
     runtime: python
     name: threat-mobileye-dashboard
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt && cd Msg-reader && npm install
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
     envVars:
       - key: VT_API_KEY
@@ -11,4 +11,6 @@ services:
       - key: ABUSEIPDB_API_KEY
         sync: false
       - key: RAPIDAPI_KEY
+        sync: false
+      - key: FLASK_SECRET_KEY
         sync: false
