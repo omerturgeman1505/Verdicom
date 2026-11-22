@@ -912,6 +912,8 @@ def extract_text_from_docx(docx_data: bytes) -> str:
 # ======= NEWS CACHING =======
 _news_cache = {"data": None, "timestamp": 0}
 _NEWS_CACHE_TTL = 300  # 5 minutes
+_telegram_cache = {"data": None, "timestamp": 0}
+_TELEGRAM_CACHE_TTL = 900  # 15 minutes – Telegram is useful context, not a blocking dependency
 
 def get_cyber_news_cached():
     """Get cyber news with caching to avoid repeated HTTP requests."""
@@ -928,6 +930,99 @@ def get_cyber_news_cached():
         print(f"[News] Error fetching news: {e}")
         # Return empty list immediately on any failure to avoid blocking
         return []
+
+def get_erez_dasa_posts_cached():
+    """Read the public preview of Erez Dasa's CyberSecurityIL channel.
+
+    The channel has no public search API, so this deliberately reads only the
+    public preview and caches the small result set. A failure never blocks a
+    threat lookup.
+    """
+    now = time.time()
+    if _telegram_cache["data"] is not None and now - _telegram_cache["timestamp"] < _TELEGRAM_CACHE_TTL:
+        return _telegram_cache["data"]
+
+    posts = []
+    try:
+        response = get_requests_session().get(
+            "https://t.me/s/CyberSecurityIL",
+            headers={"User-Agent": "Mozilla/5.0 (compatible; VerdiCom/1.0)"},
+            timeout=2.5,
+            verify=get_ssl_verify(),
+        )
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, "html.parser")
+            for message in soup.select(".tgme_widget_message")[-25:]:
+                text = message.select_one(".tgme_widget_message_text")
+                date = message.select_one(".tgme_widget_message_date")
+                if not text:
+                    continue
+                link = date.get("href") if date else "https://t.me/s/CyberSecurityIL"
+                posts.append({
+                    "title": safe_text(text.get_text(" ", strip=True), 260),
+                    "link": link or "https://t.me/s/CyberSecurityIL",
+                    "source": "Erez Dasa · CyberSecurityIL",
+                })
+    except Exception as exc:
+        print(f"[Telegram] Context feed unavailable: {exc}")
+
+    _telegram_cache["data"] = posts
+    _telegram_cache["timestamp"] = now
+    return posts
+
+def _indicator_terms(query: str) -> list:
+    """Create useful, low-noise terms for matching an IOC against news."""
+    query = (query or "").strip().lower()
+    parsed = urlparse(query if "://" in query else f"//{query}")
+    host = (parsed.hostname or "").lower()
+    if not host and guess_type(query) == "domain":
+        host = query
+    terms = [query]
+    if host:
+        terms.extend([host, host.split(":")[0]])
+        labels = [part for part in host.split(".") if len(part) >= 4 and part not in {"www", "com", "net", "org", "co", "io"}]
+        terms.extend(labels)
+    return list(dict.fromkeys(term for term in terms if len(term) >= 4))
+
+def get_relevant_context(query: str, cyber_news: list, telegram_posts: list) -> dict:
+    """Match a lookup to fresh public cyber reporting without slowing the UI."""
+    terms = _indicator_terms(query)
+
+    def matches(items):
+        selected = []
+        for item in items or []:
+            haystack = f"{item.get('title', '')} {item.get('link', '')}".lower()
+            hits = [term for term in terms if term in haystack]
+            if hits:
+                enriched = dict(item)
+                enriched["matched_terms"] = hits[:3]
+                selected.append(enriched)
+        return selected[:3]
+
+    news_matches = matches(cyber_news)
+    telegram_matches = matches(telegram_posts)
+    return {
+        "news": news_matches,
+        "telegram": telegram_matches,
+        "news_signal": min(15, len(news_matches) * 8),
+        "telegram_signal": min(15, len(telegram_matches) * 10),
+    }
+
+def calculate_overall_risk(vt_summary: dict, context: dict) -> dict:
+    """A transparent 0–100 risk score; VT stays the primary signal."""
+    vt_summary = vt_summary or {}
+    malicious = int(vt_summary.get("malicious") or 0)
+    suspicious = int(vt_summary.get("suspicious") or 0)
+    community = int(vt_summary.get("community_score") or 0)
+    vt_signal = min(70, malicious * 9 + suspicious * 4 + max(0, -community) * 2)
+    score = min(100, vt_signal + context.get("news_signal", 0) + context.get("telegram_signal", 0))
+    if score >= 70:
+        label, tone = "High risk", "danger"
+    elif score >= 35:
+        label, tone = "Needs review", "warning"
+    else:
+        label, tone = "Low signal", "safe"
+    return {"score": score, "label": label, "tone": tone, "vt_signal": vt_signal}
 
 def guess_type(q: str) -> str:
     q = (q or "").strip()
@@ -1328,7 +1423,8 @@ def home():
     return render_template("index.html", result=result, query="", vt=None, ipdb=None,
                            malicious=0, suspicious=0, harmless=0, undetected=0, timeout=0,
                            news=news_data, recent_history=recent_history,
-                           vt_comments=vt_comments, comments_error=comments_error)
+                           vt_comments=vt_comments, comments_error=comments_error,
+                           context={"news": [], "telegram": []}, overall_risk=None)
 
 def active_recon_domain(domain: str) -> dict:
     """
@@ -2616,16 +2712,25 @@ def get_vt_comments_api():
 # --- Fix: Restore Main Search Function (which was missing) ---
 @app.route("/lookup", methods=["POST"])
 def lookup():
-    news_data = get_cyber_news_cached()
     query = (request.form.get("query") or "").strip()
     cache_only = request.form.get("cache_only") == "1"
+
+    # Fetch independent public signals in parallel. Each source is cached and
+    # time-bounded, so an unavailable feed cannot make the mobile UI feel slow.
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        news_future = executor.submit(get_cyber_news_cached)
+        telegram_future = executor.submit(get_erez_dasa_posts_cached)
+        vt_future = executor.submit(vt_fetch, query) if query and not cache_only else None
+        news_data = news_future.result()
+        telegram_posts = telegram_future.result()
     
     if not query:
         recent_history = get_recent_history(limit=10)
         return render_template("index.html", result="No query entered", query="",
                                vt=None, ipdb=None,
                                malicious=0, suspicious=0, harmless=0, undetected=0, timeout=0,
-                               news=news_data, recent_history=recent_history)
+                               news=news_data, recent_history=recent_history,
+                               context={"news": [], "telegram": []}, overall_risk=None)
 
     # If cache_only flag is set, use cache only (no API calls)
     if cache_only:
@@ -2642,10 +2747,11 @@ def lookup():
                                    query=query,
                                    vt=None, ipdb=None,
                                    malicious=0, suspicious=0, harmless=0, undetected=0, timeout=0,
-                                   news=news_data, recent_history=recent_history)
+                                   news=news_data, recent_history=recent_history,
+                                   context={"news": [], "telegram": []}, overall_risk=None)
     else:
         # Normal lookup - will use cache if available, otherwise make API calls
-        vt_summary, vt_err = vt_fetch(query)
+        vt_summary, vt_err = vt_future.result()
         if not vt_summary:
             vt_summary = {} 
 
@@ -2689,6 +2795,9 @@ def lookup():
     if ipdb_view is not None:
         ipdb_view["error"] = ipdb_err
 
+    context = get_relevant_context(query, news_data, telegram_posts)
+    overall_risk = calculate_overall_risk(vt_summary, context)
+
     # Get recent history AFTER lookups (so current search is included)
     recent_history = get_recent_history(limit=10)
     print(f"[Lookup] Recent history count: {len(recent_history)}")
@@ -2705,7 +2814,9 @@ def lookup():
         undetected=undetected,
         timeout=timeout,
         news=news_data,
-        recent_history=recent_history
+        recent_history=recent_history,
+        context=context,
+        overall_risk=overall_risk
     )
 
 @app.route("/lookup_fast", methods=["POST"])
